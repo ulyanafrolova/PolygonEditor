@@ -425,6 +425,8 @@ test-results/
 # Mac bundle stuff
 *.dmg
 *.app
+# The WinForms project folder is named "*.App"; on case-insensitive macOS the rule above would ignore it.
+!src/PolygonEditor.App/
 
 # content below from: https://github.com/github/gitignore/blob/main/Global/macOS.gitignore
 # General
