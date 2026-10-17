@@ -7,6 +7,10 @@ public sealed class LengthDialog : Form
 
     private LengthDialog(string edgeName, double initial)
     {
+        SuspendLayout();
+        // Layout below is written for 96 DPI; WinForms rescales positions and sizes to the actual DPI.
+        AutoScaleDimensions = new SizeF(96F, 96F);
+        AutoScaleMode = AutoScaleMode.Dpi;
         Text = $"Długość krawędzi {edgeName}";
         FormBorderStyle = FormBorderStyle.FixedDialog;
         StartPosition = FormStartPosition.CenterParent;
@@ -30,6 +34,8 @@ public sealed class LengthDialog : Form
         AcceptButton = ok;
         CancelButton = cancel;
         Shown += (_, _) => _value.Select(0, _value.Text.Length);
+        ResumeLayout(false);
+        PerformLayout();
     }
 
     /// <returns>The entered length, or null if cancelled.</returns>

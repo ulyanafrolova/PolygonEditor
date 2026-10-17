@@ -18,6 +18,10 @@ public sealed class MainForm : Form
 
     public MainForm()
     {
+        SuspendLayout();
+        // Sizes below are written for 100% display scaling (96 DPI); WinForms rescales them to the actual DPI.
+        AutoScaleDimensions = new SizeF(96F, 96F);
+        AutoScaleMode = AutoScaleMode.Dpi;
         Text = "Edytor wielokątów";
         ClientSize = new Size(1200, 780);
         StartPosition = FormStartPosition.CenterScreen;
@@ -30,16 +34,25 @@ public sealed class MainForm : Form
         _canvas.MouseMove += (_, _) => UpdateStatus();
         _canvas.ContextMenuRequested += (target, location) => _contextMenu.Show(_canvas, target, location);
 
+        // The panel and its contents size themselves to their text, so nothing is clipped at any scaling.
         var sidePanel = new FlowLayoutPanel
         {
             Dock = DockStyle.Right,
-            Width = 230,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
             FlowDirection = FlowDirection.TopDown,
             WrapContents = false,
             Padding = new Padding(8),
         };
         sidePanel.Controls.Add(CreateLineAlgorithmGroup());
-        var helpButton = new Button { Text = "Dokumentacja (F1)", Width = 205, Height = 30, Margin = new Padding(3, 10, 3, 3) };
+        var helpButton = new Button
+        {
+            Text = "Dokumentacja (F1)",
+            AutoSize = true,
+            Padding = new Padding(4),
+            Margin = new Padding(3, 10, 3, 3),
+            Dock = DockStyle.Fill, // in a FlowLayoutPanel: stretch to the widest control (the group)
+        };
         helpButton.Click += (_, _) => ShowHelp();
         sidePanel.Controls.Add(helpButton);
 
@@ -51,6 +64,8 @@ public sealed class MainForm : Form
         Controls.Add(_canvas);
         _canvas.BringToFront(); // fill the space left by the side panel and status bar
         UpdateStatus();
+        ResumeLayout(false);
+        PerformLayout();
     }
 
     protected override void OnKeyDown(KeyEventArgs e)
@@ -118,9 +133,23 @@ public sealed class MainForm : Form
 
     private GroupBox CreateLineAlgorithmGroup()
     {
-        var group = new GroupBox { Text = "Rysowanie odcinków", Size = new Size(205, 80) };
-        var library = new RadioButton { Text = "Biblioteczny (GDI+)", Location = new Point(12, 22), AutoSize = true, Checked = true };
-        var bresenham = new RadioButton { Text = "Bresenham (własny)", Location = new Point(12, 46), AutoSize = true };
+        var group = new GroupBox
+        {
+            Text = "Rysowanie odcinków",
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            Padding = new Padding(8, 4, 8, 6),
+        };
+        var radios = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            FlowDirection = FlowDirection.TopDown,
+            WrapContents = false,
+        };
+        var library = new RadioButton { Text = "Biblioteczny (GDI+)", AutoSize = true, Checked = true };
+        var bresenham = new RadioButton { Text = "Bresenham (własny)", AutoSize = true };
 
         library.CheckedChanged += (_, _) =>
         {
@@ -131,8 +160,9 @@ public sealed class MainForm : Form
             if (bresenham.Checked) _canvas.LineAlgorithm = LineAlgorithm.Bresenham;
         };
 
-        group.Controls.Add(library);
-        group.Controls.Add(bresenham);
+        radios.Controls.Add(library);
+        radios.Controls.Add(bresenham);
+        group.Controls.Add(radios);
         return group;
     }
 }

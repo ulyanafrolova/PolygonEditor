@@ -17,6 +17,9 @@ public sealed class HelpForm : Form
 
     public HelpForm()
     {
+        SuspendLayout();
+        AutoScaleDimensions = new SizeF(96F, 96F);
+        AutoScaleMode = AutoScaleMode.Dpi;
         Text = "Dokumentacja – Edytor wielokątów";
         Size = new Size(820, 720);
         StartPosition = FormStartPosition.CenterParent;
@@ -30,6 +33,7 @@ public sealed class HelpForm : Form
             tabs.TabPages.Add(tab);
         }
         Controls.Add(tabs);
+        ResumeLayout(false);
     }
 
     protected override void OnKeyDown(KeyEventArgs e)
