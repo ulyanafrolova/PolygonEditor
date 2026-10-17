@@ -9,4 +9,9 @@
     <RootNamespace>PolygonEditor.Core</RootNamespace>
   </PropertyGroup>
 
+  <ItemGroup>
+    <!-- Built-in documentation shown by the application (F1). -->
+    <EmbeddedResource Include="Documentation\*.md" LogicalName="Documentation.%(Filename)%(Extension)" />
+  </ItemGroup>
+
 </Project>

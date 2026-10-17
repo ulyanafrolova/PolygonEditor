@@ -1,9 +1,10 @@
+using PolygonEditor.Core.Constraints.Solver;
 using PolygonEditor.Core.Model;
 
 namespace PolygonEditor.Core.Constraints;
 
-/// <summary>Geometric relation on one or more edges (possibly from different polygons).</summary>
-public abstract class Constraint
+/// <summary>Geometric relation defined by the user on one or more edges (possibly from different polygons).</summary>
+public abstract class Constraint : ISolvable
 {
     protected Constraint(int id) => Id = id;
 
@@ -21,6 +22,13 @@ public abstract class Constraint
     /// <summary>How far the current geometry is from satisfying the constraint (0 = satisfied).</summary>
     public abstract double Error { get; }
 
+    public abstract double Tolerance { get; }
+
+    public abstract void Project(SolverContext context);
+
+    /// <summary>Constraints act on edge endpoints (for curved edges: on the chord).</summary>
+    public IEnumerable<PointRef> Points => Edges.SelectMany(e => new[] { PointRef.Of(e.Start), PointRef.Of(e.End) });
+
     public bool Involves(Edge edge) => Edges.Contains(edge);
-    public bool IsSatisfied(double tolerance = 1e-3) => Error <= tolerance;
+    public bool IsSatisfied() => Error <= Tolerance;
 }

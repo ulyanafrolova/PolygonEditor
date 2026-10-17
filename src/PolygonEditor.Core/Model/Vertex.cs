@@ -26,6 +26,13 @@ public sealed class Vertex
         IsContinuityExplicit = true;
     }
 
+    /// <summary>Puts back a previous state (undo of a rejected change).</summary>
+    internal void RestoreContinuity(Continuity continuity, bool isExplicit)
+    {
+        Continuity = continuity;
+        IsContinuityExplicit = isExplicit;
+    }
+
     /// <summary>Continuity applied automatically (e.g. after switching an edge to Bezier).</summary>
     internal void ApplyDefaultContinuity(Continuity continuity)
     {

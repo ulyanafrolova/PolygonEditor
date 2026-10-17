@@ -1,4 +1,5 @@
 using PolygonEditor.Core.Geometry;
+using PolygonEditor.Core.Model;
 
 namespace PolygonEditor.Core.Editing;
 
@@ -14,6 +15,7 @@ public sealed class EditorController
     private GeometrySnapshot? _snapshot;
     private Vec2 _lastMouse;
     private Vec2 _grabOffset;
+    private Action<Edge>? _onEdgePicked;
 
     public EditorController(SceneEditor editor, HitTester? hitTester = null)
     {
@@ -31,10 +33,39 @@ public sealed class EditorController
 
     public HitTarget? HitTest(Vec2 p) => _hitTester.HitTest(Editor.Scene, p);
 
+    /// <summary>True while waiting for the user to click a second edge (e.g. for a parallel constraint).</summary>
+    public bool IsPickingEdge => _onEdgePicked is not null;
+
+    /// <summary>Next left click on an edge (or its control point) calls the callback instead of starting a drag.</summary>
+    public void BeginPickEdge(Action<Edge> onPicked) => _onEdgePicked = onPicked;
+
+    public bool CancelPick()
+    {
+        bool wasPicking = IsPickingEdge;
+        _onEdgePicked = null;
+        return wasPicking;
+    }
+
     public bool MouseDown(Vec2 p)
     {
         HitTarget? hit = HitTest(p);
         Hovered = hit;
+
+        if (_onEdgePicked is { } onPicked)
+        {
+            Edge? edge = hit switch
+            {
+                EdgeHit e => e.Edge,
+                ControlPointHit c => c.Edge,
+                _ => null,
+            };
+            if (edge is null)
+                return false;
+            _onEdgePicked = null;
+            onPicked(edge);
+            return true;
+        }
+
         if (hit is null)
             return false;
 
