@@ -7,6 +7,9 @@ namespace PolygonEditor.App;
 public sealed class EditorContextMenu
 {
     private const string Unsolvable = "Nie można spełnić wszystkich ograniczeń – zmiana została cofnięta.";
+
+    /// <summary>For topology changes (add/remove vertex), which are kept even when re-solving fails.</summary>
+    public const string PartiallySolved = "Wierzchołek zmieniono, ale nie udało się przywrócić wszystkich ograniczeń i ciągłości.";
     private static readonly Font HeaderFont = new(SystemFonts.MenuFont ?? Control.DefaultFont, FontStyle.Bold);
 
     private readonly ContextMenuStrip _menu = new();
@@ -53,7 +56,7 @@ public sealed class EditorContextMenu
     private void AddVertexItems(Vertex vertex)
     {
         _menu.Items.Add(Header($"Wierzchołek {vertex.Name}"));
-        _menu.Items.Add(Item("Usuń wierzchołek", () => _editor.RemoveVertex(vertex), _editor.CanRemoveVertex(vertex)));
+        _menu.Items.Add(Item("Usuń wierzchołek", () => ReportTopology(_editor.RemoveVertex(vertex)), _editor.CanRemoveVertex(vertex)));
 
         if (!vertex.TouchesCurve)
             return;
@@ -71,12 +74,12 @@ public sealed class EditorContextMenu
     private void AddEdgeItems(Edge edge)
     {
         _menu.Items.Add(Header($"Krawędź {edge.Name}"));
-        _menu.Items.Add(Item("Dodaj wierzchołek w środku", () => _editor.InsertVertex(edge)));
+        _menu.Items.Add(Item("Dodaj wierzchołek w środku", () => ReportTopology(_editor.InsertVertex(edge, out _))));
         _menu.Items.Add(new ToolStripSeparator());
 
         foreach (var (kind, text) in new[] { (EdgeKind.Line, "Odcinek"), (EdgeKind.Bezier, "Krzywa Béziera"), (EdgeKind.Arc, "Łuk okręgu") })
         {
-            var item = Item(text, () => _editor.SetEdgeKind(edge, kind));
+            var item = Item(text, () => Report(_editor.SetEdgeKind(edge, kind)));
             item.Checked = edge.Kind == kind;
             _menu.Items.Add(item);
         }
@@ -105,7 +108,8 @@ public sealed class EditorContextMenu
         _controller.BeginPickEdge(second =>
         {
             if (!_editor.CanAddParallel(first, second))
-                Message("Tej pary krawędzi nie można uczynić równoległą (ta sama krawędź, krawędzie sąsiednie lub ograniczenie już istnieje).");
+                Message("Tej pary krawędzi nie można uczynić równoległą: to ta sama krawędź, krawędzie są już równoległe " +
+                        "(także pośrednio) albo dwie sąsiednie krawędzie stałyby się równoległe (bezpośrednio lub przez inne równoległości).");
             else
                 Report(_editor.AddParallel(first, second));
             _sceneChanged();
@@ -116,6 +120,12 @@ public sealed class EditorContextMenu
     {
         if (!success)
             Message(Unsolvable);
+    }
+
+    private void ReportTopology(bool solved)
+    {
+        if (!solved)
+            Message(PartiallySolved);
     }
 
     private void Message(string text) =>

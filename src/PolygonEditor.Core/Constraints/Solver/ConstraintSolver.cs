@@ -37,7 +37,15 @@ public sealed class ConstraintSolver
     public static List<ISolvable> Relations(Scene scene) =>
         scene.Constraints.Cast<ISolvable>().Concat(ContinuityConstraint.For(scene)).ToList();
 
-    public static bool AllSatisfied(Scene scene) => Relations(scene).All(IsSatisfied);
+    /// <summary>
+    /// Full consistency check: every solver relation holds, every vertex respects the continuity
+    /// rules, and the continuity measured on the real curves (arcs included) holds at every vertex.
+    /// The last two catch errors the solver's own relations cannot see (arcs are not relations).
+    /// </summary>
+    public static bool AllSatisfied(Scene scene) =>
+        Relations(scene).All(IsSatisfied)
+        && !ContinuityRules.Violations(scene).Any()
+        && scene.Polygons.SelectMany(p => p.Vertices).All(v => ContinuityRules.MeasureError(v) <= ContinuityRules.Tolerance(v));
 
     private static bool IsSatisfied(ISolvable relation) => relation.Error <= relation.Tolerance;
 

@@ -26,18 +26,18 @@ public static class EdgeGeometry
     }
 
     /// <summary>dP/dt at the start. Line: B - A. Bezier: 3(V1 - V0).</summary>
-    public static Vec2 DerivativeAtStart(Edge edge, Vertex? forceG0 = null, int depth = 0) => edge.Kind switch
+    public static Vec2 DerivativeAtStart(Edge edge) => edge.Kind switch
     {
         EdgeKind.Bezier => 3 * (edge.Control1 - edge.Start.Position),
-        EdgeKind.Arc => ArcGeometry.Compute(edge, forceG0, depth)?.DerivativeAtStart ?? edge.Chord,
+        EdgeKind.Arc => ArcGeometry.Compute(edge)?.DerivativeAtStart ?? edge.Chord,
         _ => edge.Chord,
     };
 
     /// <summary>dP/dt at the end. Line: B - A. Bezier: 3(V3 - V2).</summary>
-    public static Vec2 DerivativeAtEnd(Edge edge, Vertex? forceG0 = null, int depth = 0) => edge.Kind switch
+    public static Vec2 DerivativeAtEnd(Edge edge) => edge.Kind switch
     {
         EdgeKind.Bezier => 3 * (edge.End.Position - edge.Control2),
-        EdgeKind.Arc => ArcGeometry.Compute(edge, forceG0, depth)?.DerivativeAtEnd ?? edge.Chord,
+        EdgeKind.Arc => ArcGeometry.Compute(edge)?.DerivativeAtEnd ?? edge.Chord,
         _ => edge.Chord,
     };
 }

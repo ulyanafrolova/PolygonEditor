@@ -79,18 +79,37 @@ public sealed class SceneEditor
 
     // ---------- edge kind and continuity ----------
 
-    public void SetEdgeKind(Edge edge, EdgeKind kind)
+    /// <summary>
+    /// Changes the edge kind; new control points are adjusted to the neighbours' continuity while
+    /// the segment's vertices stay. Returns false and restores the previous state if unsolvable.
+    /// </summary>
+    public bool SetEdgeKind(Edge edge, EdgeKind kind)
     {
         if (edge.Kind == kind)
-            return;
-        switch (kind)
-        {
-            case EdgeKind.Bezier: edge.MakeBezier(); break;
-            case EdgeKind.Arc: edge.MakeArc(); break;
-            default: edge.MakeLine(); break;
-        }
-        // New control points are adjusted to the neighbours' continuity; the segment's vertices stay.
-        Solve(PointRef.Of(edge.Start), PointRef.Of(edge.End));
+            return true;
+
+        EdgeKind previousKind = edge.Kind;
+        Vec2 control1 = edge.Control1, control2 = edge.Control2;
+        var (startContinuity, startExplicit) = (edge.Start.Continuity, edge.Start.IsContinuityExplicit);
+        var (endContinuity, endExplicit) = (edge.End.Continuity, edge.End.IsContinuityExplicit);
+
+        return TryChange(
+            () =>
+            {
+                switch (kind)
+                {
+                    case EdgeKind.Bezier: edge.MakeBezier(); break;
+                    case EdgeKind.Arc: edge.MakeArc(); break;
+                    default: edge.MakeLine(); break;
+                }
+            },
+            () =>
+            {
+                edge.Restore(previousKind, control1, control2);
+                edge.Start.RestoreContinuity(startContinuity, startExplicit);
+                edge.End.RestoreContinuity(endContinuity, endExplicit);
+            },
+            new[] { PointRef.Of(edge.Start), PointRef.Of(edge.End) });
     }
 
     public bool CanSetContinuity(Vertex vertex, Continuity continuity) => ContinuityRules.IsAllowed(vertex, continuity);
@@ -133,13 +152,42 @@ public sealed class SceneEditor
     }
 
     /// <summary>
-    /// Parallelism is allowed between any two edges except the same edge and two neighbouring
-    /// edges of one polygon (they would collapse onto one line); a pair can be constrained once.
+    /// Parallelism is transitive (a ∥ c and c ∥ b give a ∥ b), so the check is done on whole
+    /// classes of mutually parallel edges. Rejected: a and b already parallel (also indirectly),
+    /// and any merged class containing two neighbouring edges of one polygon — they would
+    /// collapse onto one line.
     /// </summary>
-    public bool CanAddParallel(Edge a, Edge b) =>
-        a != b
-        && !(a.Polygon == b.Polygon && (a.Next == b || b.Next == a))
-        && !Scene.Constraints.OfType<ParallelConstraint>().Any(c => (c.A == a && c.B == b) || (c.A == b && c.B == a));
+    public bool CanAddParallel(Edge a, Edge b)
+    {
+        if (a == b)
+            return false;
+        HashSet<Edge> classA = ParallelClass(a);
+        if (classA.Contains(b))
+            return false;
+
+        var merged = new List<Edge>(classA);
+        merged.AddRange(ParallelClass(b));
+        return !merged.Any(e => merged.Contains(e.Next));
+    }
+
+    /// <summary>All edges connected to the given one by parallel constraints (including itself).</summary>
+    public HashSet<Edge> ParallelClass(Edge edge)
+    {
+        var parallels = Scene.Constraints.OfType<ParallelConstraint>().ToList();
+        var result = new HashSet<Edge> { edge };
+        var queue = new Queue<Edge>(result);
+        while (queue.Count > 0)
+        {
+            Edge current = queue.Dequeue();
+            foreach (ParallelConstraint c in parallels)
+            {
+                Edge? other = c.A == current ? c.B : c.B == current ? c.A : null;
+                if (other is not null && result.Add(other))
+                    queue.Enqueue(other);
+            }
+        }
+        return result;
+    }
 
     /// <summary>Adds a parallel constraint; edge a keeps its direction, b is rotated. Returns false and reverts if unsolvable.</summary>
     public bool AddParallel(Edge a, Edge b)
@@ -159,23 +207,49 @@ public sealed class SceneEditor
 
     // ---------- topology ----------
 
-    /// <summary>Geometry does not change (Bezier is split exactly), so all remaining relations still hold.</summary>
-    public Vertex InsertVertex(Edge edge) => Scene.InsertVertex(edge);
+    /// <summary>
+    /// Inserts a vertex in the middle of the edge and re-solves with the vertices of the split edge
+    /// pinned. Needed even though de Casteljau keeps the shape: each half has only half of the old
+    /// tangent vector at the old ends, which breaks C1 there (and an arc becomes two segments).
+    /// Returns false if the relations could not all be restored (the topology change stays).
+    /// </summary>
+    public bool InsertVertex(Edge edge, out Vertex inserted)
+    {
+        Vertex start = edge.Start, end = edge.End;
+        inserted = Scene.InsertVertex(edge);
+        return SolveOrKeep(PointRef.Of(start), PointRef.Of(inserted), PointRef.Of(end));
+    }
 
     public bool CanRemoveVertex(Vertex vertex) => vertex.Polygon.Vertices.Count > 3;
 
-    /// <summary>Removes the vertex; continuity at the neighbours is re-established with the new edge's ends pinned.</summary>
-    public void RemoveVertex(Vertex vertex)
+    /// <summary>
+    /// Removes the vertex; continuity at the neighbours is re-established with the new edge's ends
+    /// pinned. Returns false if the relations could not all be restored (the topology change stays).
+    /// </summary>
+    public bool RemoveVertex(Vertex vertex)
     {
         Vertex before = vertex.EdgeBefore.Start;
         Scene.RemoveVertex(vertex);
         Edge merged = before.EdgeAfter;
-        Solve(PointRef.Of(merged.Start), PointRef.Of(merged.End));
+        return SolveOrKeep(PointRef.Of(merged.Start), PointRef.Of(merged.End));
     }
 
     // ---------- helpers ----------
 
     private bool Solve(params PointRef[] pinned) => _solver.Solve(Scene, pinned);
+
+    /// <summary>
+    /// For topology changes, which cannot simply be undone: solve; if that fails, put the geometry
+    /// back as it was right after the change (no half-solved state) and report false.
+    /// </summary>
+    private bool SolveOrKeep(params PointRef[] pinned)
+    {
+        var snapshot = GeometrySnapshot.Capture(Scene);
+        if (Solve(pinned))
+            return true;
+        snapshot.Restore();
+        return false;
+    }
 
     /// <summary>
     /// Applies a change and tries to solve with each set of pinned points in turn

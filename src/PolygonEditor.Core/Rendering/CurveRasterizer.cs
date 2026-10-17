@@ -26,6 +26,8 @@ public static class CurveRasterizer
     /// </summary>
     public static Vec2[] BezierPoints(Vec2 v0, Vec2 v1, Vec2 v2, Vec2 v3, int segments)
     {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(segments);
+
         Vec2 a0 = v0;
         Vec2 a1 = 3 * (v1 - v0);
         Vec2 a2 = 3 * (v2 - 2 * v1 + v0);

@@ -10,6 +10,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- Model mutators are internal (only SceneEditor changes the scene); tests may use them directly. -->
+    <InternalsVisibleTo Include="PolygonEditor.Core.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- Built-in documentation shown by the application (F1). -->
     <EmbeddedResource Include="Documentation\*.md" LogicalName="Documentation.%(Filename)%(Extension)" />
   </ItemGroup>

@@ -11,7 +11,7 @@ public sealed class Polygon
     private readonly List<Vertex> _vertices = new();
     private readonly List<Edge> _edges = new();
 
-    public Polygon(IEnumerable<Vec2> points, string name)
+    internal Polygon(IEnumerable<Vec2> points, string name)
     {
         Name = name;
         foreach (Vec2 p in points)
@@ -23,7 +23,7 @@ public sealed class Polygon
             _edges.Add(new Edge(this, _vertices[i], _vertices[(i + 1) % _vertices.Count]));
     }
 
-    public string Name { get; set; }
+    public string Name { get; }
     public IReadOnlyList<Vertex> Vertices => _vertices;
     public IReadOnlyList<Edge> Edges => _edges;
 
@@ -34,7 +34,7 @@ public sealed class Polygon
     public Edge EdgeBefore(Vertex vertex) => _edges[(IndexOf(vertex) - 1 + _edges.Count) % _edges.Count];
 
     /// <summary>Moves the whole polygon, including Bezier control points.</summary>
-    public void Translate(Vec2 delta)
+    internal void Translate(Vec2 delta)
     {
         foreach (Vertex v in _vertices)
             v.Position += delta;
@@ -43,8 +43,13 @@ public sealed class Polygon
     }
 
     /// <summary>
-    /// Inserts a vertex in the middle of the edge. The edge is replaced by two new ones;
-    /// a Bezier edge is split with de Casteljau at t = 1/2 so the shape stays the same.
+    /// Inserts a vertex in the middle of the edge (the curve's midpoint P(1/2) for curves).
+    /// The edge is replaced by two new ones:
+    /// - Bezier: split with de Casteljau at t = 1/2, so the shape stays exactly the same
+    ///   (each half has half the tangent length at the old ends — SceneEditor re-solves C1);
+    /// - arc: two straight edges through the arc's midpoint (an arc is defined by its ends and
+    ///   continuity, so the halves could not keep the original circle);
+    /// - line: two straight edges.
     /// </summary>
     internal Vertex InsertVertex(Edge edge)
     {
@@ -52,29 +57,38 @@ public sealed class Polygon
         if (index < 0)
             throw new ArgumentException("Edge does not belong to this polygon.", nameof(edge));
 
-        Vertex middle;
-        Edge first, second;
+        Vec2 p0 = edge.Start.Position, p3 = edge.End.Position;
+        Vec2 p01 = default, p012 = default, p123 = default, p23 = default;
+        Vec2 middlePoint;
         if (edge.Kind == EdgeKind.Bezier)
         {
-            Vec2 p0 = edge.Start.Position, p1 = edge.Control1, p2 = edge.Control2, p3 = edge.End.Position;
-            Vec2 p01 = Vec2.Lerp(p0, p1, 0.5), p12 = Vec2.Lerp(p1, p2, 0.5), p23 = Vec2.Lerp(p2, p3, 0.5);
-            Vec2 p012 = Vec2.Lerp(p01, p12, 0.5), p123 = Vec2.Lerp(p12, p23, 0.5);
-            middle = new Vertex(this, Vec2.Lerp(p012, p123, 0.5));
-            first = new Edge(this, edge.Start, middle);
-            second = new Edge(this, middle, edge.End);
-            first.MakeBezier(p01, p012);
-            second.MakeBezier(p123, p23);
+            Vec2 p1 = edge.Control1, p2 = edge.Control2;
+            p01 = Vec2.Lerp(p0, p1, 0.5);
+            Vec2 p12 = Vec2.Lerp(p1, p2, 0.5);
+            p23 = Vec2.Lerp(p2, p3, 0.5);
+            p012 = Vec2.Lerp(p01, p12, 0.5);
+            p123 = Vec2.Lerp(p12, p23, 0.5);
+            middlePoint = Vec2.Lerp(p012, p123, 0.5);
         }
         else
         {
-            middle = new Vertex(this, Vec2.Lerp(edge.Start.Position, edge.End.Position, 0.5));
-            first = new Edge(this, edge.Start, middle);
-            second = new Edge(this, middle, edge.End);
+            middlePoint = EdgeGeometry.PointAt(edge, 0.5);
         }
 
+        var middle = new Vertex(this, middlePoint);
+        var first = new Edge(this, edge.Start, middle);
+        var second = new Edge(this, middle, edge.End);
+
+        // Topology first: making the halves Bezier consults the neighbouring edges of their ends.
         _vertices.Insert(index + 1, middle);
         _edges[index] = first;
         _edges.Insert(index + 1, second);
+
+        if (edge.Kind == EdgeKind.Bezier)
+        {
+            first.MakeBezier(p01, p012);
+            second.MakeBezier(p123, p23);
+        }
         return middle;
     }
 
@@ -88,6 +102,8 @@ public sealed class Polygon
             throw new InvalidOperationException("A polygon must keep at least 3 vertices.");
 
         int index = IndexOf(vertex);
+        if (index < 0)
+            throw new ArgumentException("Vertex does not belong to this polygon.", nameof(vertex));
         int beforeIndex = (index - 1 + _edges.Count) % _edges.Count;
         Edge before = _edges[beforeIndex];
         Edge after = _edges[index];

@@ -18,32 +18,30 @@ public readonly record struct ArcShape(Vec2 Center, double Radius, double StartA
 /// An arc edge stores no extra parameters: its circle follows from the endpoints and continuity.
 /// - G1 at one end: the arc is tangent there to the neighbouring edge and passes through the other end.
 /// - G0 at both ends: a semicircle with radius = half of the chord.
-/// Only one end can effectively be G1; if both are, the start wins.
+/// ContinuityRules guarantee that only one end is G1 and that the G1 neighbour is never another
+/// arc, so the neighbour's tangent never depends on this arc (no recursion). The checks below
+/// still ignore a G1 that breaks those rules instead of looping.
 /// </summary>
 public static class ArcGeometry
 {
-    // Guards against infinite recursion when arcs with G1 depend on each other around the polygon.
-    private const int MaxDepth = 8;
     private const double Eps = 1e-9;
 
-    /// <param name="forceG0">Vertex whose G1 requirement is ignored (breaks mutual dependency of two arcs).</param>
     /// <returns>null when the arc degenerates to a straight segment.</returns>
-    public static ArcShape? Compute(Edge edge, Vertex? forceG0 = null, int depth = 0)
+    public static ArcShape? Compute(Edge edge)
     {
         Vec2 a = edge.Start.Position, b = edge.End.Position;
         Vec2 chord = b - a;
         if (chord.LengthSquared < Eps)
             return null;
 
-        bool g1Allowed = depth < MaxDepth;
-        if (g1Allowed && WantsG1(edge.Start, forceG0))
+        if (UsesG1(edge.Start, edge.Previous))
         {
-            Vec2 tangent = EdgeGeometry.DerivativeAtEnd(edge.Previous, edge.Start, depth + 1);
+            Vec2 tangent = EdgeGeometry.DerivativeAtEnd(edge.Previous);
             return TangentArc(a, tangent, b);
         }
-        if (g1Allowed && WantsG1(edge.End, forceG0))
+        if (UsesG1(edge.End, edge.Next))
         {
-            Vec2 tangent = EdgeGeometry.DerivativeAtStart(edge.Next, edge.End, depth + 1);
+            Vec2 tangent = EdgeGeometry.DerivativeAtStart(edge.Next);
             return TangentArc(b, -tangent, a)?.Reversed();
         }
 
@@ -82,6 +80,7 @@ public static class ArcGeometry
         return new ArcShape(center, Math.Abs(s), startAngle, sweep);
     }
 
-    private static bool WantsG1(Vertex vertex, Vertex? forceG0) =>
-        vertex != forceG0 && vertex.Continuity != Continuity.G0;
+    /// <summary>G1 at this end of the arc, taken from a neighbour that is not an arc.</summary>
+    private static bool UsesG1(Vertex end, Edge neighbour) =>
+        end.Continuity != Continuity.G0 && neighbour.Kind != EdgeKind.Arc;
 }

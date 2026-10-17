@@ -13,7 +13,9 @@ Dzięki temu algorytmy są testowane testami jednostkowymi (projekt `PolygonEdit
 - **Polygon** – nazwa (W1, W2, …), lista wierzchołków i lista krawędzi. Krawędź i łączy wierzchołek i z wierzchołkiem (i + 1) mod n.
 - **Vertex** – pozycja, klasa ciągłości (G0 / G1 / C1) i znacznik, czy klasę ustawił użytkownik.
 - **Edge** – wierzchołek początkowy i końcowy, rodzaj (`Line`, `Bezier`, `Arc`) oraz punkty kontrolne V1, V2 (używane dla Béziera; V0 i V3 to wierzchołki krawędzi).
-- **ContinuityRules** – reguły dozwolonych klas ciągłości (łuk: bez C1, G1 tylko na jednym końcu).
+- **ContinuityRules** – jedno źródło prawdy o ciągłości: dozwolone klasy (łuk: bez C1, G1 tylko na jednym końcu, bez G1 między dwoma łukami), wartości domyślne przy zamianie na Béziera, normalizacja końców łuku oraz pomiar ciągłości na rzeczywistych wektorach stycznych.
+
+Metody zmieniające model (pozycje, rodzaj krawędzi, ciągłość, dodawanie ograniczeń) są `internal`: z zewnątrz biblioteki model można zmieniać tylko przez `SceneEditor`, który pilnuje reguł i uruchamia solver.
 
 Końce krawędzi są niezmienne. Wstawienie lub usunięcie wierzchołka tworzy nowe obiekty krawędzi, więc ograniczenia „starych” krawędzi łatwo odnaleźć i usunąć.
 
@@ -56,4 +58,4 @@ scene.AddFixedLength(w4.Edges[1]);
 scene.AddParallel(w4.Edges[2], w1.Edges[3]);
 ```
 
-Scena musi spełniać swoje ograniczenia – sprawdza to test `InitialScene_SatisfiesItsConstraints`.
+Punkty kontrolne wystarczy podać w przybliżeniu: na końcu `Create` solver (z przypiętymi wszystkimi wierzchołkami) dopasowuje je do wymaganej ciągłości. Długości i równoległości muszą być spełnione przez same wierzchołki – w przeciwnym razie tworzenie sceny kończy się wyjątkiem, a test `InitialScene_SatisfiesItsConstraints` to wykrywa.

@@ -77,13 +77,19 @@ public sealed class MainForm : Form
                 ShowHelp();
                 e.Handled = true;
                 break;
-            case Keys.Escape when _controller.CancelDrag() || _controller.CancelPick():
-                OnSceneChanged();
-                e.Handled = true;
+            case Keys.Escape:
+                bool cancelled = _controller.CancelDrag() || _controller.CancelPick();
+                if (cancelled)
+                {
+                    OnSceneChanged();
+                    e.Handled = true;
+                }
                 break;
             case Keys.Delete when !_controller.IsDragging && _controller.Hovered is VertexHit v && _editor.CanRemoveVertex(v.Vertex):
-                _editor.RemoveVertex(v.Vertex);
+                bool solved = _editor.RemoveVertex(v.Vertex);
                 OnSceneChanged();
+                if (!solved)
+                    MessageBox.Show(this, EditorContextMenu.PartiallySolved, "Ograniczenia", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 e.Handled = true;
                 break;
         }

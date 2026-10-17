@@ -9,7 +9,9 @@ Każda relacja (ograniczenie użytkownika lub relacja ciągłości) umie się �
 Relacje:
 
 - ograniczenia użytkownika ze sceny (długość, równoległość);
-- relacje ciągłości G1/C1 wyprowadzane z wierzchołków, przy których styka się segment Béziera z odcinkiem lub innym segmentem Béziera. Łuki nie potrzebują relacji – łuk z G1 jest konstruowany z wektora stycznego sąsiada.
+- relacje ciągłości G1/C1 wyprowadzane z wierzchołków, przy których styka się segment Béziera z odcinkiem lub innym segmentem Béziera. Łuki nie potrzebują relacji – łuk z G1 jest konstruowany z wektora stycznego sąsiada. Sąsiad ten nigdy nie jest łukiem (reguła ciągłości), więc kształt łuku nie zależy rekurencyjnie od innych łuków.
+
+Pełna kontrola spójności (`ConstraintSolver.AllSatisfied`, używana w testach) sprawdza dodatkowo, że każda klasa ciągłości jest dozwolona i że ciągłość zmierzona na rzeczywistych krzywych (łącznie z łukami) jest spełniona w każdym wierzchołku.
 
 Kryterium spełnienia: długość ±0,05 px, równoległość |sin kąta| ≤ 10⁻⁴, G1 – różnica wektorów jednostkowych ≤ 10⁻⁴, C1 – różnica wektorów stycznych ≤ 0,05.
 

@@ -4,14 +4,16 @@ namespace PolygonEditor.Core.Model;
 
 public sealed class Vertex
 {
-    public Vertex(Polygon polygon, Vec2 position)
+    internal Vertex(Polygon polygon, Vec2 position)
     {
         Polygon = polygon;
         Position = position;
     }
 
     public Polygon Polygon { get; }
-    public Vec2 Position { get; set; }
+
+    /// <summary>Changed only through SceneEditor / the solver (setter is internal).</summary>
+    public Vec2 Position { get; internal set; }
 
     /// <summary>Required continuity at this vertex; meaningful only when an adjacent edge is a curve.</summary>
     public Continuity Continuity { get; private set; } = Continuity.G0;
@@ -19,12 +21,15 @@ public sealed class Vertex
     /// <summary>True once the user chose the continuity; defaults no longer override it.</summary>
     public bool IsContinuityExplicit { get; private set; }
 
-    /// <summary>Continuity chosen by the user.</summary>
-    public void SetContinuity(Continuity continuity)
+    /// <summary>Continuity chosen by the user (validated by SceneEditor via ContinuityRules).</summary>
+    internal void SetContinuity(Continuity continuity)
     {
         Continuity = continuity;
         IsContinuityExplicit = true;
     }
+
+    /// <summary>Change forced by the rules; keeps the "explicit" flag as it was.</summary>
+    internal void ForceContinuity(Continuity continuity) => Continuity = continuity;
 
     /// <summary>Puts back a previous state (undo of a rejected change).</summary>
     internal void RestoreContinuity(Continuity continuity, bool isExplicit)

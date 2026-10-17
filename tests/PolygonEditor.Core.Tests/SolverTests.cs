@@ -219,17 +219,13 @@ public class SolverTests
         AssertNear(end, bezier.End.Position);
     }
 
-    /// <summary>
-    /// C1 next to a fixed-length line forces |V − C2| = L/3, so dragging C2 must move the joint
-    /// vertex (the "exceptional case" allowed by the specification) — but not the whole polygon.
-    /// </summary>
     [Fact]
-    public void InitialScene_C1ControlPointNextToFixedLengthMovesJointVertexOnly()
+    public void InitialScene_C1ControlPointDragKeepsSegmentVertices()
     {
         var scene = InitialScene.Create();
         var editor = new SceneEditor(scene);
         Edge bezier = scene.Polygons[0].Edges[1];
-        Vec2 start = bezier.Start.Position;
+        Vec2 start = bezier.Start.Position, end = bezier.End.Position;
         Vec2 target = bezier.Control2 + new Vec2(40, 25);
 
         editor.MoveControlPoint(bezier, 2, target);
@@ -238,5 +234,32 @@ public class SolverTests
         Assert.True(ConstraintSolver.AllSatisfied(scene));
         Assert.False(editor.LastMoveWasRigid);
         AssertNear(start, bezier.Start.Position);
+        AssertNear(end, bezier.End.Position);
+    }
+
+    /// <summary>
+    /// C1 next to a fixed-length line forces |V − C2| = L/3, so dragging C2 must move the joint
+    /// vertex (the "exceptional case" allowed by the specification) — but not the whole polygon.
+    /// </summary>
+    [Fact]
+    public void C1NextToFixedLengthLine_ControlPointDragMovesJointVertexOnly()
+    {
+        var scene = new Scene();
+        var p = scene.AddPolygon((0, 0), (100, 0), (200, 0), (200, 100), (0, 100));
+        p.Vertices[2].SetContinuity(Continuity.C1);
+        p.Edges[1].MakeBezier(new Vec2(130, -30), new Vec2(170, 0)); // C1 with line 2→3 is fixed below
+        var editor = new SceneEditor(scene);
+        Assert.True(editor.SetContinuity(p.Vertices[2], Continuity.C1));
+        Assert.True(editor.SetFixedLength(p.Edges[2], p.Edges[2].Length));
+        Vec2 start = p.Vertices[1].Position, joint = p.Vertices[2].Position;
+        Vec2 target = p.Edges[1].Control2 + new Vec2(-20, 15);
+
+        editor.MoveControlPoint(p.Edges[1], 2, target);
+
+        AssertNear(target, p.Edges[1].Control2);
+        Assert.True(ConstraintSolver.AllSatisfied(scene));
+        Assert.False(editor.LastMoveWasRigid);
+        AssertNear(start, p.Vertices[1].Position);
+        Assert.True(Vec2.Distance(joint, p.Vertices[2].Position) > 1, "the joint vertex has to move");
     }
 }
