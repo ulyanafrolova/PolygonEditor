@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Platform-independent part: data model, geometry, constraints, rasterization.
+       No WinForms dependency, so it builds and is testable on any OS. -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>PolygonEditor.Core</RootNamespace>
+  </PropertyGroup>
+
+</Project>
