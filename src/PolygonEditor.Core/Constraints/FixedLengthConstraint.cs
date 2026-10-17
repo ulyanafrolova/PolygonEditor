@@ -18,5 +18,6 @@ public sealed class FixedLengthConstraint : Constraint
 
     public override IReadOnlyList<Edge> Edges => new[] { Edge };
     public override string IconText => $"{Length:0}";
+    public override string Description => $"Długość {Edge.Name} = {Length:0.#}";
     public override double Error => Math.Abs(Edge.Length - Length);
 }

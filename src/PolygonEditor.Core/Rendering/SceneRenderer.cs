@@ -1,4 +1,5 @@
 using System.Drawing;
+using PolygonEditor.Core.Editing;
 using PolygonEditor.Core.Geometry;
 using PolygonEditor.Core.Model;
 
@@ -15,6 +16,7 @@ public static class Palette
     public static readonly Color LabelText = Color.FromArgb(40, 40, 40);
     public static readonly Color ContinuityBackground = Color.FromArgb(225, 240, 225);
     public static readonly Color ConstraintBackground = Color.FromArgb(255, 245, 200);
+    public static readonly Color Highlight = Color.FromArgb(0, 170, 90);
 }
 
 /// <summary>Draws the whole scene: edges (lines, Bezier curves, arcs), vertices, continuity and constraint icons.</summary>
@@ -23,45 +25,55 @@ public sealed class SceneRenderer
     private const double VertexRadius = 5;
     private const double ControlPointRadius = 4;
 
-    public void Render(Scene scene, IRenderTarget target, ILineDrawer lines)
+    /// <param name="highlight">Hovered or dragged element, drawn in the highlight color.</param>
+    public void Render(Scene scene, IRenderTarget target, ILineDrawer lines, HitTarget? highlight = null)
     {
         target.Clear(Palette.Background);
 
         foreach (Polygon polygon in scene.Polygons)
             foreach (Edge edge in polygon.Edges)
-                DrawEdge(edge, target, lines);
+                DrawEdge(edge, target, lines, IsHighlighted(edge, highlight));
 
         foreach (Polygon polygon in scene.Polygons)
             foreach (Vertex vertex in polygon.Vertices)
                 DrawVertex(vertex, target);
 
         DrawConstraintIcons(scene, target);
+        DrawHandleHighlight(highlight, target);
     }
 
-    private static void DrawEdge(Edge edge, IRenderTarget target, ILineDrawer lines)
+    private static bool IsHighlighted(Edge edge, HitTarget? highlight) => highlight switch
     {
-        Vec2 a = edge.Start.Position, b = edge.End.Position;
-        switch (edge.Kind)
+        EdgeHit e => e.Edge == edge,
+        PolygonHit p => p.Target == edge.Polygon,
+        _ => false,
+    };
+
+    private static void DrawEdge(Edge edge, IRenderTarget target, ILineDrawer lines, bool highlighted)
+    {
+        if (edge.Kind == EdgeKind.Bezier)
         {
-            case EdgeKind.Bezier:
-                Vec2 c1 = edge.Control1, c2 = edge.Control2;
-                lines.DrawLine(a, c1, Palette.ControlPolygon, dashed: true);
-                lines.DrawLine(c1, c2, Palette.ControlPolygon, dashed: true);
-                lines.DrawLine(c2, b, Palette.ControlPolygon, dashed: true);
-                lines.DrawPolyline(CurveRasterizer.BezierPoints(a, c1, c2, b), Palette.Curve);
-                target.FillCircle(c1, ControlPointRadius, Palette.ControlPoint);
-                target.FillCircle(c2, ControlPointRadius, Palette.ControlPoint);
-                break;
+            Vec2 a = edge.Start.Position, b = edge.End.Position, c1 = edge.Control1, c2 = edge.Control2;
+            lines.DrawLine(a, c1, Palette.ControlPolygon, dashed: true);
+            lines.DrawLine(c1, c2, Palette.ControlPolygon, dashed: true);
+            lines.DrawLine(c2, b, Palette.ControlPolygon, dashed: true);
+            target.FillCircle(c1, ControlPointRadius, Palette.ControlPoint);
+            target.FillCircle(c2, ControlPointRadius, Palette.ControlPoint);
+        }
 
-            case EdgeKind.Arc:
-                if (ArcGeometry.Compute(edge) is { } arc)
-                    lines.DrawPolyline(CurveRasterizer.ArcPoints(arc), Palette.Curve);
-                else
-                    lines.DrawLine(a, b, Palette.Curve);
-                break;
+        Color color = highlighted ? Palette.Highlight : edge.Kind == EdgeKind.Line ? Palette.Edge : Palette.Curve;
+        lines.DrawPolyline(CurveRasterizer.EdgePoints(edge), color);
+    }
 
-            default:
-                lines.DrawLine(a, b, Palette.Edge);
+    private static void DrawHandleHighlight(HitTarget? highlight, IRenderTarget target)
+    {
+        switch (highlight)
+        {
+            case VertexHit v:
+                target.DrawCircle(v.Vertex.Position, VertexRadius + 4, Palette.Highlight);
+                break;
+            case ControlPointHit c:
+                target.DrawCircle(c.Position, ControlPointRadius + 4, Palette.Highlight);
                 break;
         }
     }

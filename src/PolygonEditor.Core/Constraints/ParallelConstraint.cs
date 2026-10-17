@@ -17,6 +17,7 @@ public sealed class ParallelConstraint : Constraint
 
     public override IReadOnlyList<Edge> Edges => new[] { A, B };
     public override string IconText => $"∥{Id}";
+    public override string Description => $"Równoległość ∥{Id}: {A.Name} – {B.Name}";
 
     /// <summary>|sin| of the angle between the edges.</summary>
     public override double Error => Math.Abs(Vec2.Cross(A.Chord.Normalized(), B.Chord.Normalized()));

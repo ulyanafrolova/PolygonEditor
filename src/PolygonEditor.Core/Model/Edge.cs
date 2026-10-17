@@ -52,7 +52,11 @@ public sealed class Edge
     }
 
     /// <summary>Switches to a circular arc; its shape is derived from endpoints and continuity (see ArcGeometry).</summary>
-    public void MakeArc() => Kind = EdgeKind.Arc;
+    public void MakeArc()
+    {
+        Kind = EdgeKind.Arc;
+        ContinuityRules.NormalizeArcEnds(this);
+    }
 
     internal void Translate(Vec2 delta)
     {

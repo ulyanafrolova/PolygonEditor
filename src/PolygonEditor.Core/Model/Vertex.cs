@@ -33,6 +33,9 @@ public sealed class Vertex
             Continuity = continuity;
     }
 
+    /// <summary>Human-readable name, e.g. "W1[2]".</summary>
+    public string Name => $"{Polygon.Name}[{Polygon.IndexOf(this)}]";
+
     public Edge EdgeBefore => Polygon.EdgeBefore(this);
     public Edge EdgeAfter => Polygon.EdgeAfter(this);
 

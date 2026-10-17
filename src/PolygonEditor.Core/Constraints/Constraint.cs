@@ -15,6 +15,9 @@ public abstract class Constraint
     /// <summary>Short text drawn near the middle of each constrained edge.</summary>
     public abstract string IconText { get; }
 
+    /// <summary>Longer text for menus.</summary>
+    public abstract string Description { get; }
+
     /// <summary>How far the current geometry is from satisfying the constraint (0 = satisfied).</summary>
     public abstract double Error { get; }
 
