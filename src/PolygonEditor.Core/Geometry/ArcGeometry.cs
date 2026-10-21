@@ -26,6 +26,26 @@ public static class ArcGeometry
 {
     private const double Eps = 1e-9;
 
+    /// <summary>
+    /// A G1 arc whose far end lies behind the tangent has to loop around (sweep over 180°), and as
+    /// that end approaches the tangent line the radius grows without bound. Such loops larger than
+    /// this many chords are treated as invalid geometry (see <see cref="IsWellShaped"/>).
+    /// </summary>
+    public const double MaxLoopRadiusToChord = 2.5;
+
+    /// <summary>
+    /// How much the arc exceeds the allowed loop size (0 = fine). Arcs up to a semicircle are always
+    /// fine, however flat; only loops (|sweep| &gt; 180°) are limited to MaxLoopRadiusToChord · chord.
+    /// </summary>
+    public static double LoopExcess(Edge edge)
+    {
+        if (edge.Kind != EdgeKind.Arc || Compute(edge) is not { } arc || Math.Abs(arc.Sweep) <= Math.PI + 1e-9)
+            return 0;
+        return Math.Max(0, arc.Radius - MaxLoopRadiusToChord * edge.Length);
+    }
+
+    public static bool IsWellShaped(Edge edge) => LoopExcess(edge) <= 1e-6;
+
     /// <returns>null when the arc degenerates to a straight segment.</returns>
     public static ArcShape? Compute(Edge edge)
     {

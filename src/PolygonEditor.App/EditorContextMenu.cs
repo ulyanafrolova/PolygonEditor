@@ -44,9 +44,7 @@ public sealed class EditorContextMenu
             case EdgeHit e:
                 AddEdgeItems(e.Edge);
                 break;
-            case PolygonHit p:
-                _menu.Items.Add(Header($"Wielokąt {p.Target.Name} – przeciągnij LPM, aby przesunąć"));
-                break;
+            // Polygon interior: nothing to choose (moving is done by dragging), so no menu.
         }
 
         if (_menu.Items.Count > 0)
@@ -142,5 +140,9 @@ public sealed class EditorContextMenu
         return item;
     }
 
-    private static ToolStripLabel Header(string text) => new(text) { Font = HeaderFont };
+    /// <summary>
+    /// Bold, non-clickable title. A ToolStripMenuItem (not a ToolStripLabel) so the menu measures
+    /// its width correctly — a label in a context menu can be cut off.
+    /// </summary>
+    private static ToolStripMenuItem Header(string text) => new(text) { Font = HeaderFont, Enabled = false };
 }

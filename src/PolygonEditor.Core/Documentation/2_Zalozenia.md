@@ -2,7 +2,7 @@
 
 ## Wariant zadania
 
-Nazwisko autorki zaczyna się na literę z zakresu A–K, dlatego zaimplementowano ograniczenie **równoległości** krawędzi, a domyślną klasą ciągłości przy zamianie krawędzi na segment Béziera jest **G1** (stała `VariantSettings.DefaultBezierContinuity`).
+Wariant zadania - A–K, więc zaimplementowałam ograniczenie równoległości krawędzi, a domyślną klasą ciągłości przy zamianie krawędzi na segment Béziera jest G1 (stała VariantSettings.DefaultBezierContinuity)
 
 ## Wielokąty i krawędzie
 
@@ -20,6 +20,7 @@ Nazwisko autorki zaczyna się na literę z zakresu A–K, dlatego zaimplementowa
 - Równoległość jest przechodnia (a ∥ c i c ∥ b daje a ∥ b), więc sprawdzane są całe klasy wzajemnie równoległych krawędzi. Nie można uczynić równoległymi: krawędzi z samą sobą, krawędzi już równoległych (także pośrednio) ani takiej pary, po której dodaniu dwie sąsiednie krawędzie jednego wielokąta byłyby równoległe – bezpośrednio lub przez inne równoległości (zlałyby się w jedną prostą).
 - Krawędź może mieć jedno ograniczenie długości i dowolnie wiele ograniczeń równoległości.
 - Przy dodawaniu długości nieruchomy pozostaje wierzchołek początkowy krawędzi; przy dodawaniu równoległości – pierwsza wybrana krawędź.
+- Jeśli druga krawędź należy do innego wielokąta, ten wielokąt jest najpierw obracany jako całość (bryła sztywna) wokół środka tej krawędzi o mniejszy z dwóch kątów, które czynią ją równoległą. Dzięki temu jego kształt, krzywe i własne ograniczenia się nie zmieniają; solver poprawia tylko to, co jeszcze trzeba.
 - Zmiana niemożliwa do spełnienia jest cofana (geometria wraca do stanu sprzed zmiany).
 
 ## Ciągłość
@@ -33,6 +34,7 @@ Nazwisko autorki zaczyna się na literę z zakresu A–K, dlatego zaimplementowa
 - Łuk nie ma własnych parametrów – jest wyznaczany z wierzchołków i ciągłości:
   - G0 na obu końcach: półokrąg o promieniu równym połowie cięciwy, rysowany po lewej stronie krawędzi (patrząc od wierzchołka początkowego do końcowego);
   - G1 na jednym końcu: łuk styczny w tym końcu do sąsiedniej krawędzi i przechodzący przez drugi koniec; gdy styczna pokrywa się z cięciwą (promień nieskończony), krawędź rysowana jest jako odcinek.
+  - Jeśli drugi koniec leży „za” styczną, łuk musi zatoczyć pętlę (ponad 180°), a gdy ten koniec zbliża się do prostej stycznej, promień rośnie bez ograniczeń. Pętle o promieniu większym niż 2,5 długości cięciwy są traktowane jako niedopuszczalna geometria: zmiana, która by je wytworzyła, jest odrzucana, a przy przeciąganiu cały wielokąt jest przesuwany zamiast odkształcany. Łuki do półokręgu (choćby bardzo płaskie) są zawsze dopuszczalne.
 
 ## Edycja myszą
 

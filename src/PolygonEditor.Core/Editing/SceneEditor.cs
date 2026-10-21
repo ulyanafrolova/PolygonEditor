@@ -189,7 +189,13 @@ public sealed class SceneEditor
         return result;
     }
 
-    /// <summary>Adds a parallel constraint; edge a keeps its direction, b is rotated. Returns false and reverts if unsolvable.</summary>
+    /// <summary>
+    /// Adds a parallel constraint; edge a keeps its direction, b is turned to match.
+    /// If b belongs to another polygon, that polygon is first rotated as a rigid body around the
+    /// middle of b (by the smaller of the two angles that make b parallel), so its shape, curves and
+    /// own constraints stay intact; the solver then only fixes what is still needed.
+    /// Returns false and reverts if unsolvable.
+    /// </summary>
     public bool AddParallel(Edge a, Edge b)
     {
         if (!CanAddParallel(a, b))
@@ -197,10 +203,28 @@ public sealed class SceneEditor
 
         ParallelConstraint? added = null;
         return TryChange(
-            () => added = Scene.AddParallel(a, b),
+            () =>
+            {
+                if (a.Polygon != b.Polygon)
+                    RotateToParallel(b, a.Chord);
+                added = Scene.AddParallel(a, b);
+            },
             () => Scene.RemoveConstraint(added!),
             new[] { PointRef.Of(a.Start), PointRef.Of(a.End) },
             new[] { PointRef.Of(a.Start) });
+    }
+
+    /// <summary>Rotates the polygon of <paramref name="edge"/> so the edge's chord becomes parallel to <paramref name="direction"/>.</summary>
+    private static void RotateToParallel(Edge edge, Vec2 direction)
+    {
+        Vec2 current = edge.Chord.Normalized(), target = direction.Normalized();
+        if (current == Vec2.Zero || target == Vec2.Zero)
+            return;
+        if (Vec2.Dot(current, target) < 0)
+            target = -target; // keep the edge's orientation: turn by less than 90°
+        double angle = Math.Atan2(Vec2.Cross(current, target), Vec2.Dot(current, target));
+        Vec2 pivot = Vec2.Lerp(edge.Start.Position, edge.End.Position, 0.5);
+        edge.Polygon.Rotate(pivot, angle);
     }
 
     public void RemoveConstraint(Constraint constraint) => Scene.RemoveConstraint(constraint);

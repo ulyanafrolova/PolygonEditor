@@ -42,6 +42,21 @@ public sealed class Polygon
             e.Translate(delta);
     }
 
+    /// <summary>Rotates the whole polygon (with control points) around a point; its shape does not change.</summary>
+    internal void Rotate(Vec2 center, double angle)
+    {
+        double cos = Math.Cos(angle), sin = Math.Sin(angle);
+        Vec2 Turn(Vec2 p) => center + (p - center).Rotate(cos, sin);
+
+        foreach (Vertex v in _vertices)
+            v.Position = Turn(v.Position);
+        foreach (Edge e in _edges)
+        {
+            e.Control1 = Turn(e.Control1);
+            e.Control2 = Turn(e.Control2);
+        }
+    }
+
     /// <summary>
     /// Inserts a vertex in the middle of the edge (the curve's midpoint P(1/2) for curves).
     /// The edge is replaced by two new ones:

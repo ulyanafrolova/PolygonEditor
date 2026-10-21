@@ -33,9 +33,15 @@ public sealed class ConstraintSolver
         return relations.All(IsSatisfied);
     }
 
-    /// <summary>User constraints plus continuity relations derived from vertex settings.</summary>
+    /// <summary>
+    /// User constraints, continuity relations derived from vertex settings, and the check that no
+    /// arc has degenerated into a huge loop.
+    /// </summary>
     public static List<ISolvable> Relations(Scene scene) =>
-        scene.Constraints.Cast<ISolvable>().Concat(ContinuityConstraint.For(scene)).ToList();
+        scene.Constraints.Cast<ISolvable>()
+            .Concat(ContinuityConstraint.For(scene))
+            .Concat(ArcShapeConstraint.For(scene))
+            .ToList();
 
     /// <summary>
     /// Full consistency check: every solver relation holds, every vertex respects the continuity
