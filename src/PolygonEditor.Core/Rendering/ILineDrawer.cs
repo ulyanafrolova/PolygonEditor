@@ -31,5 +31,9 @@ public sealed class LibraryLineDrawer : ILineDrawer
 
     public LibraryLineDrawer(IRenderTarget target) => _target = target;
 
-    public void DrawLine(Vec2 a, Vec2 b, Color color, bool dashed = false) => _target.DrawLine(a, b, color, dashed);
+    public void DrawLine(Vec2 a, Vec2 b, Color color, bool dashed = false)
+    {
+        if (LineClipper.ClipToTarget(ref a, ref b, _target))
+            _target.DrawLine(a, b, color, dashed);
+    }
 }

@@ -19,6 +19,11 @@ public sealed class MainForm : Form
 
     // Free space kept to the right of / below the scene (labels are drawn next to points).
     private const int SceneMargin = 60;
+
+    // The canvas grows with the scene only up to this size (logical px). A G1 arc whose far end lies
+    // almost on its tangent line has a huge radius; it is simply cut off instead of making the
+    // canvas (and its bitmap) gigantic.
+    private const int MaxCanvasSize = 4000;
     private readonly ToolStripStatusLabel _status = new() { Spring = true, TextAlign = ContentAlignment.MiddleLeft };
 
     public MainForm()
@@ -50,40 +55,13 @@ public sealed class MainForm : Form
         _viewport.Controls.Add(_canvas);
         _viewport.Resize += (_, _) => UpdateCanvasSize();
 
-        // One auto-sized column: its width is the group's; the button is stretched to it (Anchor),
-        // so the panel is exactly as wide as its widest content at any display scaling.
-        var sidePanel = new TableLayoutPanel
-        {
-            Dock = DockStyle.Right,
-            AutoSize = true,
-            AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            ColumnCount = 1,
-            Padding = new Padding(8),
-        };
-        sidePanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        sidePanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        sidePanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        GroupBox lineGroup = CreateLineAlgorithmGroup();
-        lineGroup.Anchor = AnchorStyles.Left | AnchorStyles.Right;
-        var helpButton = new Button
-        {
-            Text = "Dokumentacja (F1)",
-            AutoSize = true,
-            Padding = new Padding(4),
-            Margin = new Padding(3, 10, 3, 3),
-            Anchor = AnchorStyles.Left | AnchorStyles.Right,
-        };
-        helpButton.Click += (_, _) => ShowHelp();
-        sidePanel.Controls.Add(lineGroup, 0, 0);
-        sidePanel.Controls.Add(helpButton, 0, 1);
-
         var statusStrip = new StatusStrip();
         statusStrip.Items.Add(_status);
 
-        Controls.Add(sidePanel);
+        Controls.Add(CreateToolbar());
         Controls.Add(statusStrip);
         Controls.Add(_viewport);
-        _viewport.BringToFront(); // fill the space left by the side panel and status bar
+        _viewport.BringToFront(); // fill the space left by the toolbar and status bar
         UpdateStatus();
         ResumeLayout(false);
         PerformLayout();
@@ -97,13 +75,19 @@ public sealed class MainForm : Form
         UpdateCanvasSize();
     }
 
-    /// <summary>Canvas = max(visible area, scene extent + margin); scroll bars appear when the scene is larger.</summary>
+    /// <summary>
+    /// Canvas = max(visible area, scene extent + margin), the scene part capped at MaxCanvasSize;
+    /// scroll bars appear when the scene is larger than the visible area.
+    /// </summary>
     private void UpdateCanvasSize()
     {
         Vec2 corner = SceneBounds.MaxCorner(_editor.Scene);
+        int limit = LogicalToDeviceUnits(MaxCanvasSize);
+        int sceneWidth = (int)Math.Min(limit, Math.Ceiling(corner.X) + SceneMargin);
+        int sceneHeight = (int)Math.Min(limit, Math.Ceiling(corner.Y) + SceneMargin);
         var size = new Size(
-            Math.Max(_viewport.ClientSize.Width, (int)Math.Ceiling(corner.X) + SceneMargin),
-            Math.Max(_viewport.ClientSize.Height, (int)Math.Ceiling(corner.Y) + SceneMargin));
+            Math.Max(_viewport.ClientSize.Width, sceneWidth),
+            Math.Max(_viewport.ClientSize.Height, sceneHeight));
         if (_canvas.Size != size)
             _canvas.Size = size;
     }
@@ -178,25 +162,33 @@ public sealed class MainForm : Form
         _status.Text = hovered.Length > 0 ? $"{hovered}    —    {Hints}" : Hints;
     }
 
-    private GroupBox CreateLineAlgorithmGroup()
+    /// <summary>
+    /// One-row bar at the top: line algorithm (radio buttons, as the task requires) on the left,
+    /// documentation button on the right. A single-row TableLayoutPanel keeps every control
+    /// vertically centred and sizes the bar to its content at any display scaling.
+    /// </summary>
+    private TableLayoutPanel CreateToolbar()
     {
-        var group = new GroupBox
+        var bar = new TableLayoutPanel
         {
-            Text = "Rysowanie odcinków",
+            Dock = DockStyle.Top,
             AutoSize = true,
             AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            Padding = new Padding(8, 4, 8, 6),
+            ColumnCount = 5,
+            RowCount = 1,
+            Padding = new Padding(6, 2, 6, 2),
         };
-        var radios = new FlowLayoutPanel
-        {
-            Dock = DockStyle.Fill,
-            AutoSize = true,
-            AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            FlowDirection = FlowDirection.TopDown,
-            WrapContents = false,
-        };
-        var library = new RadioButton { Text = "Biblioteczny (GDI+)", AutoSize = true, Checked = true };
-        var bresenham = new RadioButton { Text = "Bresenham (własny)", AutoSize = true };
+        for (int i = 0; i < 3; i++)
+            bar.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        bar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100)); // free space pushes the button right
+        bar.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        bar.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
+        var label = new Label { Text = "Rysowanie odcinków:", AutoSize = true, Anchor = AnchorStyles.Left };
+        var library = new RadioButton { Text = "Biblioteczny (GDI+)", AutoSize = true, Checked = true, Anchor = AnchorStyles.Left };
+        var bresenham = new RadioButton { Text = "Bresenham (własny)", AutoSize = true, Anchor = AnchorStyles.Left };
+        var helpButton = new Button { Text = "Dokumentacja (F1)", AutoSize = true, Anchor = AnchorStyles.Right };
+        helpButton.Click += (_, _) => ShowHelp();
 
         library.CheckedChanged += (_, _) =>
         {
@@ -207,9 +199,11 @@ public sealed class MainForm : Form
             if (bresenham.Checked) _canvas.LineAlgorithm = LineAlgorithm.Bresenham;
         };
 
-        radios.Controls.Add(library);
-        radios.Controls.Add(bresenham);
-        group.Controls.Add(radios);
-        return group;
+        // Radio buttons with the same parent form one group: checking one unchecks the other.
+        bar.Controls.Add(label, 0, 0);
+        bar.Controls.Add(library, 1, 0);
+        bar.Controls.Add(bresenham, 2, 0);
+        bar.Controls.Add(helpButton, 4, 0);
+        return bar;
     }
 }

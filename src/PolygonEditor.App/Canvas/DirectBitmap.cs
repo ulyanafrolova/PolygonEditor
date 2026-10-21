@@ -11,11 +11,18 @@ public sealed class DirectBitmap : IDisposable
 {
     private GCHandle _handle;
 
+    /// <summary>Upper bound on the pixel count (~ 400 MB at 4 bytes per pixel); the canvas never needs more.</summary>
+    public const long MaxPixels = 100_000_000;
+
     public DirectBitmap(int width, int height)
     {
+        long pixels = (long)width * height; // long: width * height can overflow int
+        if (width <= 0 || height <= 0 || pixels > MaxPixels)
+            throw new ArgumentOutOfRangeException(nameof(width), $"Invalid bitmap size {width} x {height}.");
+
         Width = width;
         Height = height;
-        Bits = new int[width * height];
+        Bits = new int[pixels];
         _handle = GCHandle.Alloc(Bits, GCHandleType.Pinned);
         Bitmap = new Bitmap(width, height, width * 4, PixelFormat.Format32bppPArgb, _handle.AddrOfPinnedObject());
     }

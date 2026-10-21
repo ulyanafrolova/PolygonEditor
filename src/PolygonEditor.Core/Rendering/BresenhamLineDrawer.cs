@@ -13,6 +13,9 @@ public sealed class BresenhamLineDrawer : ILineDrawer
 
     public void DrawLine(Vec2 a, Vec2 b, Color color, bool dashed = false)
     {
+        if (!LineClipper.ClipToTarget(ref a, ref b, _target))
+            return;
+
         int step = 0;
         foreach (var (x, y) in Rasterize((int)Math.Round(a.X), (int)Math.Round(a.Y), (int)Math.Round(b.X), (int)Math.Round(b.Y)))
         {

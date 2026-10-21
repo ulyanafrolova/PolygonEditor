@@ -32,10 +32,12 @@ Jeżeli zmiany nie da się pogodzić z istniejącymi ograniczeniami, jest ona co
 - **Delete** – usunięcie wierzchołka pod kursorem.
 - **Esc** – anulowanie przeciągania (przywraca stan sprzed chwycenia elementu) lub anulowanie wyboru drugiej krawędzi.
 
-## Panel boczny
+## Pasek narzędzi (u góry okna)
 
-- **Rysowanie odcinków** – wybór algorytmu: biblioteczny (GDI+, z wygładzaniem) albo własna implementacja algorytmu Bresenhama. Wybór dotyczy wszystkich linii: krawędzi, krzywych (rysowanych jako łamane) i wieloboków Béziera.
-- **Dokumentacja (F1)**.
+- **Rysowanie odcinków** – przyciski radiowe, wybór algorytmu: biblioteczny (GDI+, z wygładzaniem) albo własna implementacja algorytmu Bresenhama. Wybór dotyczy wszystkich linii: krawędzi, krzywych (rysowanych jako łamane) i wieloboków Béziera.
+- **Dokumentacja (F1)** – przycisk po prawej stronie paska.
+
+Gdy okno jest mniejsze niż scena, pojawiają się paski przewijania.
 
 ## Oznaczenia na scenie
 

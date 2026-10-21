@@ -43,6 +43,29 @@ public class RasterizationTests
         }
     }
 
+    [Theory]
+    [InlineData(-50, 50, 150, 50, 0, 50, 100, 50)]         // horizontal, both ends outside
+    [InlineData(10, 10, 90, 90, 10, 10, 90, 90)]           // fully inside: unchanged
+    [InlineData(-100, -100, 200, 200, 0, 0, 100, 100)]     // diagonal through the whole box
+    [InlineData(50, 50, 50, 1e9, 50, 50, 50, 100)]         // far-away end (huge arc)
+    public void LineClipper_ClipsToRectangle(double ax, double ay, double bx, double by, double cax, double cay, double cbx, double cby)
+    {
+        Vec2 a = new(ax, ay), b = new(bx, by);
+
+        Assert.True(LineClipper.Clip(ref a, ref b, 0, 0, 100, 100));
+
+        Assert.True(Vec2.Distance(a, new Vec2(cax, cay)) < 1e-6, $"a = {a}");
+        Assert.True(Vec2.Distance(b, new Vec2(cbx, cby)) < 1e-6, $"b = {b}");
+    }
+
+    [Fact]
+    public void LineClipper_RejectsSegmentsOutside()
+    {
+        Vec2 a = new(-10, -10), b = new(-1, 200);
+
+        Assert.False(LineClipper.Clip(ref a, ref b, 0, 0, 100, 100));
+    }
+
     [Fact]
     public void SceneBounds_IncludeArcBulgeAndControlPoints()
     {
