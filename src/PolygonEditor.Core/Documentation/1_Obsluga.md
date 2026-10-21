@@ -5,7 +5,7 @@ Po uruchomieniu programu wyświetla się scena demonstracyjna z trzema wielokąt
 ## Mysz
 
 - **LPM na wierzchołku** – przeciąganie wierzchołka. Wierzchołek zawsze podąża za kursorem; sąsiednie punkty kontrolne przesuwają się razem z nim, a pozostałe elementy dopasowują się do ograniczeń.
-- **LPM na punkcie kontrolnym** (pomarańczowy) – przeciąganie punktu kontrolnego segmentu Béziera. Wierzchołki tego segmentu pozostają na miejscu, chyba że ograniczenia tego wymagają (patrz zakładka „Założenia”).
+- **LPM na punkcie kontrolnym** (pomarańczowy) – przeciąganie punktu kontrolnego segmentu Béziera. Wierzchołki tego segmentu pozostają na miejscu, chyba że ograniczenia tego wymagają (zakładka „Założenia”).
 - **LPM na krawędzi lub wewnątrz wielokąta** – przesuwanie całego wielokąta.
 - **PPM** – menu kontekstowe elementu pod kursorem.
 

@@ -1,5 +1,6 @@
 using PolygonEditor.App.Canvas;
 using PolygonEditor.Core.Editing;
+using PolygonEditor.Core.Geometry;
 using PolygonEditor.Core.Rendering;
 using PolygonEditor.Core.Scenes;
 
@@ -13,7 +14,11 @@ public sealed class MainForm : Form
     private readonly EditorController _controller;
     private readonly EditorContextMenu _contextMenu;
     private readonly CanvasControl _canvas;
+    private readonly ScrollPanel _viewport;
     private HelpForm? _help;
+
+    // Free space kept to the right of / below the scene (labels are drawn next to points).
+    private const int SceneMargin = 60;
     private readonly ToolStripStatusLabel _status = new() { Spring = true, TextAlign = ContentAlignment.MiddleLeft };
 
     public MainForm()
@@ -29,43 +34,78 @@ public sealed class MainForm : Form
 
         _controller = new EditorController(_editor);
         _contextMenu = new EditorContextMenu(_editor, _controller, OnSceneChanged);
-        _canvas = new CanvasControl { Dock = DockStyle.Fill, Controller = _controller, BackColor = Color.White };
+        // The canvas sits in a scrolling viewport: it is at least as large as the viewport and grows
+        // to contain the whole scene, so a small window shows scroll bars instead of cutting shapes off.
+        _canvas = new CanvasControl { Location = Point.Empty, Controller = _controller, BackColor = Color.White };
         _canvas.HoverChanged += (_, _) => UpdateStatus();
-        _canvas.MouseMove += (_, _) => UpdateStatus();
+        _canvas.MouseMove += (_, _) =>
+        {
+            UpdateStatus();
+            if (_controller.IsDragging)
+                UpdateCanvasSize();
+        };
+        _canvas.MouseUp += (_, _) => UpdateCanvasSize();
         _canvas.ContextMenuRequested += (target, location) => _contextMenu.Show(_canvas, target, location);
+        _viewport = new ScrollPanel { Dock = DockStyle.Fill, BackColor = Color.White };
+        _viewport.Controls.Add(_canvas);
+        _viewport.Resize += (_, _) => UpdateCanvasSize();
 
-        // The panel and its contents size themselves to their text, so nothing is clipped at any scaling.
-        var sidePanel = new FlowLayoutPanel
+        // One auto-sized column: its width is the group's; the button is stretched to it (Anchor),
+        // so the panel is exactly as wide as its widest content at any display scaling.
+        var sidePanel = new TableLayoutPanel
         {
             Dock = DockStyle.Right,
             AutoSize = true,
             AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            FlowDirection = FlowDirection.TopDown,
-            WrapContents = false,
+            ColumnCount = 1,
             Padding = new Padding(8),
         };
-        sidePanel.Controls.Add(CreateLineAlgorithmGroup());
+        sidePanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        sidePanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        sidePanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        GroupBox lineGroup = CreateLineAlgorithmGroup();
+        lineGroup.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         var helpButton = new Button
         {
             Text = "Dokumentacja (F1)",
             AutoSize = true,
             Padding = new Padding(4),
             Margin = new Padding(3, 10, 3, 3),
-            Dock = DockStyle.Fill, // in a FlowLayoutPanel: stretch to the widest control (the group)
+            Anchor = AnchorStyles.Left | AnchorStyles.Right,
         };
         helpButton.Click += (_, _) => ShowHelp();
-        sidePanel.Controls.Add(helpButton);
+        sidePanel.Controls.Add(lineGroup, 0, 0);
+        sidePanel.Controls.Add(helpButton, 0, 1);
 
         var statusStrip = new StatusStrip();
         statusStrip.Items.Add(_status);
 
         Controls.Add(sidePanel);
         Controls.Add(statusStrip);
-        Controls.Add(_canvas);
-        _canvas.BringToFront(); // fill the space left by the side panel and status bar
+        Controls.Add(_viewport);
+        _viewport.BringToFront(); // fill the space left by the side panel and status bar
         UpdateStatus();
         ResumeLayout(false);
         PerformLayout();
+    }
+
+    protected override void OnLoad(EventArgs e)
+    {
+        base.OnLoad(e);
+        // Minimum outer size, written for 100% scaling and converted to the actual DPI.
+        MinimumSize = LogicalToDeviceUnits(new Size(720, 480));
+        UpdateCanvasSize();
+    }
+
+    /// <summary>Canvas = max(visible area, scene extent + margin); scroll bars appear when the scene is larger.</summary>
+    private void UpdateCanvasSize()
+    {
+        Vec2 corner = SceneBounds.MaxCorner(_editor.Scene);
+        var size = new Size(
+            Math.Max(_viewport.ClientSize.Width, (int)Math.Ceiling(corner.X) + SceneMargin),
+            Math.Max(_viewport.ClientSize.Height, (int)Math.Ceiling(corner.Y) + SceneMargin));
+        if (_canvas.Size != size)
+            _canvas.Size = size;
     }
 
     protected override void OnKeyDown(KeyEventArgs e)
@@ -110,6 +150,7 @@ public sealed class MainForm : Form
     {
         _controller.ResetHover();
         UpdateStatus();
+        UpdateCanvasSize();
         _canvas.Invalidate();
     }
 

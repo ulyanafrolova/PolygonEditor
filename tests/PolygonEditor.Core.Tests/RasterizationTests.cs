@@ -44,6 +44,20 @@ public class RasterizationTests
     }
 
     [Fact]
+    public void SceneBounds_IncludeArcBulgeAndControlPoints()
+    {
+        var scene = new PolygonEditor.Core.Model.Scene();
+        var p = scene.AddPolygon((0, 0), (100, 0), (100, 100), (0, 100));
+        p.Edges[1].MakeArc();                                            // semicircle bulging to the right of x = 100
+        p.Edges[3].MakeBezier(new Vec2(-20, 80), new Vec2(30, 140));     // control point below y = 100
+
+        Vec2 corner = SceneBounds.MaxCorner(scene);
+
+        Assert.True(corner.X >= 149, $"arc bulge missing: {corner}");
+        Assert.True(corner.Y >= 140, $"control point missing: {corner}");
+    }
+
+    [Fact]
     public void Arc_PointsStayOnCircleAndEndAtEndpoint()
     {
         var arc = ArcGeometry.TangentArc(new Vec2(0, 0), new Vec2(1, 1), new Vec2(100, 0))!.Value;
