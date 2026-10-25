@@ -231,6 +231,12 @@ public sealed class SceneEditor
 
     // ---------- topology ----------
 
+    /// <summary>New polygon with straight edges and no constraints (nothing to solve).</summary>
+    public Polygon AddPolygon(IReadOnlyList<Vec2> points) => Scene.AddPolygon(points);
+
+    /// <summary>Removes the polygon and its constraints; other polygons stay as they are.</summary>
+    public void RemovePolygon(Polygon polygon) => Scene.RemovePolygon(polygon);
+
     /// <summary>
     /// Inserts a vertex in the middle of the edge and re-solves with the vertices of the split edge
     /// pinned. Needed even though de Casteljau keeps the shape: each half has only half of the old

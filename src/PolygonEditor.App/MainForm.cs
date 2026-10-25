@@ -1,6 +1,7 @@
 using PolygonEditor.App.Canvas;
 using PolygonEditor.Core.Editing;
 using PolygonEditor.Core.Geometry;
+using PolygonEditor.Core.Model;
 using PolygonEditor.Core.Rendering;
 using PolygonEditor.Core.Scenes;
 
@@ -8,7 +9,7 @@ namespace PolygonEditor.App;
 
 public sealed class MainForm : Form
 {
-    private const string Hints = "LPM: przeciągnij  |  PPM: menu  |  Del: usuń wierzchołek  |  Esc: anuluj  |  F1: dokumentacja";
+    private const string Hints = "LPM: przeciągnij  |  PPM: menu  |  Del: usuń wierzchołek  |  N: nowy wielokąt  |  Esc: anuluj  |  F1: dokumentacja";
 
     private readonly SceneEditor _editor = new(InitialScene.Create());
     private readonly EditorController _controller;
@@ -101,8 +102,17 @@ public sealed class MainForm : Form
                 ShowHelp();
                 e.Handled = true;
                 break;
+            case Keys.N when !_controller.IsDragging && !_controller.IsCreatingPolygon:
+                BeginCreatePolygon();
+                e.Handled = true;
+                break;
+            case Keys.Enter when _controller.IsCreatingPolygon:
+                if (_controller.FinishCreatePolygon())
+                    OnSceneChanged();
+                e.Handled = e.SuppressKeyPress = true;
+                break;
             case Keys.Escape:
-                bool cancelled = _controller.CancelDrag() || _controller.CancelPick();
+                bool cancelled = _controller.CancelDrag() || _controller.CancelPick() || _controller.CancelCreatePolygon();
                 if (cancelled)
                 {
                     OnSceneChanged();
@@ -117,6 +127,17 @@ public sealed class MainForm : Form
                 e.Handled = true;
                 break;
         }
+    }
+
+    /// <summary>
+    /// Focus goes to the canvas, so Enter (finish) is not taken by the toolbar button that was just
+    /// clicked; the canvas viewport does not scroll on focus (ScrollPanel).
+    /// </summary>
+    private void BeginCreatePolygon()
+    {
+        _controller.BeginCreatePolygon();
+        _canvas.Focus();
+        OnSceneChanged();
     }
 
     /// <summary>Non-modal, single instance, so it can stay open next to the editor.</summary>
@@ -145,6 +166,12 @@ public sealed class MainForm : Form
             _status.Text = "Równoległość: kliknij drugą krawędź (Esc – anuluj)";
             return;
         }
+        if (_controller.IsCreatingPolygon)
+        {
+            _status.Text = $"Nowy wielokąt: LPM dodaje wierzchołek ({_controller.DraftPoints.Count}); " +
+                           "kliknięcie pierwszego wierzchołka lub Enter zamyka (min. 3), Esc anuluje";
+            return;
+        }
         if (_controller.IsDragging && _editor.LastMoveWasRigid)
         {
             _status.Text = "Ograniczeń nie da się spełnić – przesuwany jest cały wielokąt";
@@ -155,7 +182,7 @@ public sealed class MainForm : Form
         {
             VertexHit v => $"Wierzchołek {v.Vertex.Name} ({v.Vertex.Continuity})",
             ControlPointHit c => $"Punkt kontrolny {c.Index} krawędzi {c.Edge.Name}",
-            EdgeHit e => $"Krawędź {e.Edge.Name} ({e.Edge.Kind}, długość {e.Edge.Length:0.#})",
+            EdgeHit e => $"Krawędź {e.Edge.Name} ({e.Edge.Kind}, {(e.Edge.Kind == EdgeKind.Line ? "długość" : "cięciwa")} {e.Edge.Length:0.#})",
             PolygonHit p => $"Wielokąt {p.Target.Name}",
             _ => null,
         } ?? "";
@@ -174,11 +201,11 @@ public sealed class MainForm : Form
             Dock = DockStyle.Top,
             AutoSize = true,
             AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            ColumnCount = 5,
+            ColumnCount = 6,
             RowCount = 1,
             Padding = new Padding(6, 2, 6, 2),
         };
-        for (int i = 0; i < 3; i++)
+        for (int i = 0; i < 4; i++)
             bar.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         bar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100)); // free space pushes the button right
         bar.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
@@ -187,6 +214,8 @@ public sealed class MainForm : Form
         var label = new Label { Text = "Rysowanie odcinków:", AutoSize = true, Anchor = AnchorStyles.Left };
         var library = new RadioButton { Text = "Biblioteczny (GDI+)", AutoSize = true, Checked = true, Anchor = AnchorStyles.Left };
         var bresenham = new RadioButton { Text = "Bresenham (własny)", AutoSize = true, Anchor = AnchorStyles.Left };
+        var newPolygonButton = new Button { Text = "Nowy wielokąt (N)", AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(16, 3, 3, 3) };
+        newPolygonButton.Click += (_, _) => BeginCreatePolygon();
         var helpButton = new Button { Text = "Dokumentacja (F1)", AutoSize = true, Anchor = AnchorStyles.Right };
         helpButton.Click += (_, _) => ShowHelp();
 
@@ -203,7 +232,8 @@ public sealed class MainForm : Form
         bar.Controls.Add(label, 0, 0);
         bar.Controls.Add(library, 1, 0);
         bar.Controls.Add(bresenham, 2, 0);
-        bar.Controls.Add(helpButton, 4, 0);
+        bar.Controls.Add(newPolygonButton, 3, 0);
+        bar.Controls.Add(helpButton, 5, 0);
         return bar;
     }
 }

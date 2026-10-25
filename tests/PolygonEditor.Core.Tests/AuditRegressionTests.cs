@@ -25,19 +25,54 @@ public class AuditRegressionTests
     }
 
     [Fact]
-    public void G1BetweenTwoArcs_IsNotAllowedAndNormalizedAway()
+    public void G1BetweenTwoArcs_FirstIsSemicircleSecondIsTangentToIt()
     {
         var scene = new Scene();
-        var p = scene.AddPolygon((0, 0), (100, 0), (200, 0), (100, 150));
+        var p = scene.AddPolygon((0, 0), (100, 0), (200, 50), (100, 150));
+        var editor = new SceneEditor(scene);
+        Assert.True(editor.SetEdgeKind(p.Edges[0], EdgeKind.Arc));
+        Assert.True(editor.SetEdgeKind(p.Edges[1], EdgeKind.Arc));
+
+        Assert.True(editor.CanSetContinuity(p.Vertices[1], Continuity.G1));
+        Assert.True(editor.SetContinuity(p.Vertices[1], Continuity.G1));
+
+        Assert.Equal(50, ArcGeometry.Compute(p.Edges[0])!.Value.Radius, 9); // leader: semicircle
+        Assert.True(ContinuityRules.MeasureError(p.Vertices[1]) <= 1e-9);    // follower: tangent to it
+        Assert.False(editor.CanSetContinuity(p.Vertices[0], Continuity.G1)); // each arc: one G1 end
+        Assert.False(editor.CanSetContinuity(p.Vertices[2], Continuity.G1));
+        Assert.True(ConstraintSolver.AllSatisfied(scene));
+    }
+
+    [Fact]
+    public void G1BetweenTwoArcs_SurvivesDraggingAndSplitting()
+    {
+        var scene = new Scene();
+        var p = scene.AddPolygon((0, 0), (100, 0), (200, 50), (100, 150));
         var editor = new SceneEditor(scene);
         editor.SetEdgeKind(p.Edges[0], EdgeKind.Arc);
-        Assert.True(editor.SetContinuity(p.Vertices[1], Continuity.G1)); // arc next to a line: fine
+        editor.SetEdgeKind(p.Edges[1], EdgeKind.Arc);
+        editor.SetContinuity(p.Vertices[1], Continuity.G1);
 
-        editor.SetEdgeKind(p.Edges[1], EdgeKind.Arc);                     // now arc–arc at vertex 1
+        editor.MoveVertex(p.Vertices[1], new Vec2(110, 20));
+        Assert.True(ConstraintSolver.AllSatisfied(scene));
+        editor.InsertVertex(p.Edges[0], out _);
+        Assert.True(ConstraintSolver.AllSatisfied(scene));
+    }
 
-        Assert.Equal(Continuity.G0, p.Vertices[1].Continuity);
-        Assert.False(editor.CanSetContinuity(p.Vertices[1], Continuity.G1));
-        Assert.False(editor.SetContinuity(p.Vertices[1], Continuity.G1));
+    [Fact]
+    public void ArcEndBehindTheTangentLine_IsRejectedInsteadOfBreakingG1()
+    {
+        // Line (0,0)→(100,0), then a G1 arc from (100,0); its far end is dragged onto the line behind (50,0).
+        var scene = new Scene();
+        var p = scene.AddPolygon((0, 0), (100, 0), (100, 100), (0, 100));
+        var editor = new SceneEditor(scene);
+        Assert.True(editor.SetEdgeKind(p.Edges[1], EdgeKind.Arc));
+        Assert.True(editor.SetContinuity(p.Vertices[1], Continuity.G1));
+
+        editor.MoveVertex(p.Vertices[2], new Vec2(50, 0));
+
+        Assert.True(editor.LastMoveWasRigid);
+        Assert.Equal(new Vec2(50, 0), p.Vertices[2].Position); // still under the cursor
         Assert.True(ConstraintSolver.AllSatisfied(scene));
     }
 

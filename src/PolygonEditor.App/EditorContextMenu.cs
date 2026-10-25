@@ -44,7 +44,10 @@ public sealed class EditorContextMenu
             case EdgeHit e:
                 AddEdgeItems(e.Edge);
                 break;
-            // Polygon interior: nothing to choose (moving is done by dragging), so no menu.
+            case PolygonHit p:
+                _menu.Items.Add(Header($"Wielokąt {p.Target.Name}"));
+                _menu.Items.Add(Item("Usuń wielokąt", () => _editor.RemovePolygon(p.Target)));
+                break;
         }
 
         if (_menu.Items.Count > 0)
@@ -84,7 +87,8 @@ public sealed class EditorContextMenu
         _menu.Items.Add(new ToolStripSeparator());
 
         var fixedLength = _editor.FixedLengthOn(edge);
-        string lengthText = fixedLength is null ? "Ustal długość…" : $"Zmień długość ({fixedLength.Length:0.#})…";
+        string what = edge.Kind == EdgeKind.Line ? "długość" : "długość cięciwy";
+        string lengthText = fixedLength is null ? $"Ustal {what}…" : $"Zmień {what} ({fixedLength.Length:0.#})…";
         _menu.Items.Add(Item(lengthText, () => AskLength(edge, fixedLength?.Length ?? edge.Length)));
         _menu.Items.Add(Item("Równoległa do… (kliknij drugą krawędź)", () => BeginParallel(edge)));
 
@@ -97,7 +101,7 @@ public sealed class EditorContextMenu
 
     private void AskLength(Edge edge, double initial)
     {
-        if (LengthDialog.Ask(_owner!, edge.Name, initial) is { } length)
+        if (LengthDialog.Ask(_owner!, edge.Name, initial, edge.Kind != EdgeKind.Line) is { } length)
             Report(_editor.SetFixedLength(edge, length));
     }
 

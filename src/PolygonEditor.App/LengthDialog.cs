@@ -6,14 +6,14 @@ public sealed class LengthDialog : Form
     private readonly NumericUpDown _value;
     private readonly double _initial;
 
-    private LengthDialog(string edgeName, double initial)
+    private LengthDialog(string edgeName, double initial, bool isCurve)
     {
         _initial = initial;
         SuspendLayout();
         // Layout below is written for 96 DPI; WinForms rescales positions and sizes to the actual DPI.
         AutoScaleDimensions = new SizeF(96F, 96F);
         AutoScaleMode = AutoScaleMode.Dpi;
-        Text = $"Długość krawędzi {edgeName}";
+        Text = isCurve ? $"Długość cięciwy krawędzi {edgeName}" : $"Długość krawędzi {edgeName}";
         FormBorderStyle = FormBorderStyle.FixedDialog;
         StartPosition = FormStartPosition.CenterParent;
         MaximizeBox = MinimizeBox = ShowInTaskbar = false;
@@ -41,9 +41,10 @@ public sealed class LengthDialog : Form
     }
 
     /// <returns>The entered length, or null if cancelled.</returns>
-    public static double? Ask(IWin32Window owner, string edgeName, double initial)
+    /// <param name="isCurve">Curved edge: the length is the chord's, which the title says.</param>
+    public static double? Ask(IWin32Window owner, string edgeName, double initial, bool isCurve)
     {
-        using var dialog = new LengthDialog(edgeName, initial);
+        using var dialog = new LengthDialog(edgeName, initial, isCurve);
         return dialog.ShowDialog(owner) == DialogResult.OK ? dialog.Result : null;
     }
 

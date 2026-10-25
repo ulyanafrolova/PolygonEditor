@@ -20,18 +20,29 @@ public sealed class ConstraintSolver
     {
         List<ISolvable> relations = Relations(scene);
         if (relations.Count == 0)
-            return true;
+            return ArcsSatisfied(scene);
 
         var context = new SolverContext(ComputeWeights(scene, relations, pinned));
         for (int iteration = 0; iteration < MaxIterations; iteration++)
         {
             if (relations.All(IsSatisfied))
-                return true;
+                return ArcsSatisfied(scene);
             foreach (ISolvable relation in relations)
                 relation.Project(context);
         }
-        return relations.All(IsSatisfied);
+        return relations.All(IsSatisfied) && ArcsSatisfied(scene);
     }
+
+    /// <summary>
+    /// Arcs are not relations (a G1 arc is built from its neighbour's tangent), so they normally hold
+    /// by construction. The one exception: the far end lies on the tangent line behind the vertex —
+    /// no circle fits and the arc degenerates to a segment pointing backwards. Such a geometry is
+    /// reported as unsolvable, so the editor rejects it like any other conflict.
+    /// </summary>
+    private static bool ArcsSatisfied(Scene scene) =>
+        scene.Polygons.SelectMany(p => p.Vertices)
+            .Where(v => v.EdgeBefore.Kind == EdgeKind.Arc || v.EdgeAfter.Kind == EdgeKind.Arc)
+            .All(v => ContinuityRules.MeasureError(v) <= ContinuityRules.Tolerance(v));
 
     /// <summary>User constraints and continuity relations derived from vertex settings.</summary>
     public static List<ISolvable> Relations(Scene scene) =>

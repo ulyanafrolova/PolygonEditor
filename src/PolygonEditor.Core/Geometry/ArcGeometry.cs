@@ -18,9 +18,11 @@ public readonly record struct ArcShape(Vec2 Center, double Radius, double StartA
 /// An arc edge stores no extra parameters: its circle follows from the endpoints and continuity.
 /// - G1 at one end: the arc is tangent there to the neighbouring edge and passes through the other end.
 /// - G0 at both ends: a semicircle with radius = half of the chord.
-/// ContinuityRules guarantee that only one end is G1 and that the G1 neighbour is never another
-/// arc, so the neighbour's tangent never depends on this arc (no recursion). The checks below
-/// still ignore a G1 that breaks those rules instead of looping.
+/// G1 between two arcs: the incoming arc (whose other end is G0 by the rules) is the leader and
+/// stays a semicircle; the outgoing arc is tangent to it. So an arc reads the tangent of another
+/// arc only when that one is a plain semicircle (its start is G0 and its end G1 is ignored),
+/// which keeps the recursion one level deep. The checks below still ignore a G1 that breaks the
+/// rules instead of looping.
 /// </summary>
 public static class ArcGeometry
 {
@@ -34,12 +36,12 @@ public static class ArcGeometry
         if (chord.LengthSquared < Eps)
             return null;
 
-        if (UsesG1(edge.Start, edge.Previous))
+        if (UsesG1AtStart(edge))
         {
             Vec2 tangent = EdgeGeometry.DerivativeAtEnd(edge.Previous);
             return TangentArc(a, tangent, b);
         }
-        if (UsesG1(edge.End, edge.Next))
+        if (UsesG1AtEnd(edge))
         {
             Vec2 tangent = EdgeGeometry.DerivativeAtStart(edge.Next);
             return TangentArc(b, -tangent, a)?.Reversed();
@@ -80,7 +82,15 @@ public static class ArcGeometry
         return new ArcShape(center, Math.Abs(s), startAngle, sweep);
     }
 
-    /// <summary>G1 at this end of the arc, taken from a neighbour that is not an arc.</summary>
-    private static bool UsesG1(Vertex end, Edge neighbour) =>
-        end.Continuity != Continuity.G0 && neighbour.Kind != EdgeKind.Arc;
+    /// <summary>
+    /// G1 at the start, taken from the previous edge: any non-arc edge, or an arc that is a
+    /// semicircle here (G0 at its own start; its G1 end towards this arc is ignored, see below).
+    /// </summary>
+    private static bool UsesG1AtStart(Edge arc) =>
+        arc.Start.Continuity != Continuity.G0
+        && (arc.Previous.Kind != EdgeKind.Arc || arc.Previous.Start.Continuity == Continuity.G0);
+
+    /// <summary>G1 at the end, taken from the next edge; a next arc follows this one instead.</summary>
+    private static bool UsesG1AtEnd(Edge arc) =>
+        arc.End.Continuity != Continuity.G0 && arc.Next.Kind != EdgeKind.Arc;
 }

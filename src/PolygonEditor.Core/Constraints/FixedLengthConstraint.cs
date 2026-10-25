@@ -24,8 +24,10 @@ public sealed class FixedLengthConstraint : Constraint
     }
 
     public override IReadOnlyList<Edge> Edges => new[] { Edge };
-    public override string IconText => $"{Length:0}";
-    public override string Description => $"Długość {Edge.Name} = {Length:0.#}";
+    /// <summary>"↔" = length; on a curved edge the label says that the chord is meant.</summary>
+    public override string IconText => Edge.Kind == EdgeKind.Line ? $"↔{Length:0}" : $"↔{Length:0} (cięciwa)";
+    public override string Description =>
+        Edge.Kind == EdgeKind.Line ? $"Długość {Edge.Name} = {Length:0.#}" : $"Długość cięciwy {Edge.Name} = {Length:0.#}";
     public override double Error => Math.Abs(Edge.Length - Length);
     public override double Tolerance => 0.05;
 

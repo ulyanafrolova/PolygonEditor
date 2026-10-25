@@ -8,6 +8,7 @@ Wariant zadania - A–K, więc zaimplementowałam ograniczenie równoległości 
 
 - Wielokąty mogą mieć samoprzecięcia. Wnętrze (do chwytania myszą) wyznacza reguła parzystości (even-odd).
 - Wielokąt ma co najmniej 3 wierzchołki.
+- Wielokąty pochodzą ze sceny początkowej; dodatkowo można je tworzyć (klikanie kolejnych wierzchołków) i usuwać. Usunięcie wielokąta usuwa wszystkie ograniczenia, w których bierze udział którakolwiek z jego krawędzi; nazwy (W1, W2, …) nie są używane ponownie.
 - Dodanie wierzchołka wstawia go w środku krawędzi, a dla krzywych – w punkcie P(1/2) na krzywej. Obie nowe krawędzie mają rodzaj dzielonej krawędzi. Krawędź Béziera jest dzielona algorytmem de Casteljau w t = 1/2, więc kształt krzywej się nie zmienia. Łuk dzieli się na dwa łuki przechodzące przez środek łuku, z G0 w nowym wierzchołku; połówka przy końcu z G1 leży na tym samym okręgu, a połówka z G0 na obu końcach staje się półokręgiem (łuk jest wyznaczany z końców i ciągłości).
 - Usunięcie wierzchołka zastępuje dwie jego krawędzie jedną: gdy obie były segmentami Béziera – segmentem Béziera z dwoma zewnętrznymi punktami kontrolnymi (styczne na końcach się nie zmieniają), gdy obie były łukami – łukiem, w pozostałych przypadkach – odcinkiem.
 - W obu przypadkach ograniczenia krawędzi, które przestały istnieć, są usuwane, a solver odtwarza relacje w sąsiednich wierzchołkach (wierzchołki dzielonej lub nowej krawędzi pozostają na miejscu). Przy podziale Béziera jest to konieczne mimo zachowania kształtu: każda połówka ma na starych końcach tylko połowę dawnego wektora stycznego, co łamie C1. Jeśli relacji nie da się odtworzyć, zmiana topologii zostaje, geometria wraca do stanu tuż po zmianie i pojawia się komunikat.
@@ -15,7 +16,7 @@ Wariant zadania - A–K, więc zaimplementowałam ograniczenie równoległości 
 
 ## Ograniczenia
 
-- Długość i równoległość krawędzi zakrzywionej dotyczą jej **cięciwy** (odcinka między wierzchołkami).
+- Długość i równoległość krawędzi zakrzywionej dotyczą jej **cięciwy** (odcinka między wierzchołkami). Jest to widoczne w interfejsie: etykieta i okno długości mają dopisek „cięciwa”. Uzasadnienie: kształt krzywej zadają punkty kontrolne i ciągłość, a ograniczenie łączy wierzchołki – tak samo dla każdego rodzaju krawędzi.
 - Równoległość dopuszcza zgodny i przeciwny kierunek krawędzi; solver zachowuje bieżącą orientację.
 - Równoległość jest przechodnia (a ∥ c i c ∥ b daje a ∥ b), więc sprawdzane są całe klasy wzajemnie równoległych krawędzi. Nie można uczynić równoległymi: krawędzi z samą sobą, krawędzi już równoległych (także pośrednio) ani takiej pary, po której dodaniu dwie sąsiednie krawędzie jednego wielokąta byłyby równoległe – bezpośrednio lub przez inne równoległości (zlałyby się w jedną prostą).
 - Krawędź może mieć jedno ograniczenie długości i dowolnie wiele ograniczeń równoległości.
@@ -29,13 +30,14 @@ Wariant zadania - A–K, więc zaimplementowałam ograniczenie równoległości 
 - Klasa wybrana przez użytkownika jest zapamiętywana jako „jawna” i nigdy nie jest nadpisywana wartością domyślną.
 - Klasa niewybrana jawnie jest przeliczana przy każdej zmianie rodzaju krawędzi oraz przy dodaniu i usunięciu wierzchołka: przy segmencie Béziera – G1 (wartość domyślna wariantu), o ile pozwalają na to reguły (np. drugi koniec łuku, który ma już G1 na pierwszym końcu, dostaje G0); w pozostałych przypadkach – G0. Dzięki temu po zamianie krzywej z powrotem na odcinek nie zostaje „stara” wartość domyślna (np. nowy łuk obok takiego wierzchołka jest półokręgiem, a nie łukiem stycznym).
 - Dla łuku dozwolone są tylko G0 i G1, a G1 może mieć tylko jeden koniec łuku.
-- Nie jest dozwolone G1 w wierzchołku między dwoma łukami: łuk z G1 bierze styczną od sąsiada, więc dwa łuki czekałyby na siebie nawzajem, a wspólny kierunek nie byłby wyznaczony.
-- Przy zamianie krawędzi na łuk: C1 na końcu staje się G1, G1 między dwoma łukami staje się G0, a jeśli oba końce mają G1, koniec łuku przechodzi na G0.
+- G1 w wierzchołku między dwoma łukami jest dozwolone. Łuk wchodzący (jego drugi koniec ma G0) pozostaje półokręgiem, a łuk wychodzący jest do niego styczny. Dzięki temu kierunek wspólnej stycznej jest jednoznaczny (łuki nie „czekają” na siebie nawzajem).
+- Przy zamianie krawędzi na łuk: C1 na końcu staje się G1; jeśli oba końce mają G1, koniec łuku przechodzi na G0; G1 we wspólnym wierzchołku z sąsiednim łukiem, którego drugi koniec ma już G1, przechodzi na G0.
 - Wszystkie te reguły są w jednym miejscu (`ContinuityRules`), a spełnienie ciągłości jest sprawdzane na rzeczywistych wektorach stycznych krzywych – także łuków.
 - Łuk nie ma własnych parametrów – jest wyznaczany z wierzchołków i ciągłości:
   - G0 na obu końcach: półokrąg o promieniu równym połowie cięciwy, rysowany po lewej stronie krawędzi (patrząc od wierzchołka początkowego do końcowego);
   - G1 na jednym końcu: łuk styczny w tym końcu do sąsiedniej krawędzi i przechodzący przez drugi koniec; gdy styczna pokrywa się z cięciwą (promień nieskończony), krawędź rysowana jest jako odcinek.
   - Jeśli drugi koniec leży „za” styczną, łuk zatacza pętlę (ponad 180°), a gdy ten koniec zbliża się do prostej stycznej, promień rośnie bez ograniczeń. Jest to poprawna geometria G1, więc nie jest ograniczana; części łuku poza oknem są obcinane przy rysowaniu.
+  - Gdy drugi koniec leży dokładnie na prostej stycznej **za** wierzchołkiem, żaden okrąg nie spełnia G1. Taki stan jest traktowany jak sprzeczność ograniczeń: zmiana jest cofana, a przy przeciąganiu przesuwany jest cały wielokąt.
 
 ## Edycja myszą
 

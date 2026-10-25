@@ -10,16 +10,13 @@ public static class ContinuityRules
 {
     /// <summary>
     /// - Arcs support only G0/G1 (no C1).
-    /// - At most one end of an arc may be G1.
-    /// - No G1 between two arcs: an arc with G1 takes its tangent from the neighbour, so two
-    ///   arcs would each wait for the other (the shared tangent direction is not determined).
+    /// - At most one end of an arc may be G1 (also between two arcs: then the incoming arc is a
+    ///   semicircle and the outgoing one is tangent to it, see ArcGeometry).
     /// </summary>
     public static bool IsAllowed(Vertex vertex, Continuity continuity)
     {
         if (continuity == Continuity.G0)
             return true;
-        if (vertex.EdgeBefore.Kind == EdgeKind.Arc && vertex.EdgeAfter.Kind == EdgeKind.Arc)
-            return false;
 
         foreach (Edge edge in new[] { vertex.EdgeBefore, vertex.EdgeAfter })
         {
@@ -65,22 +62,23 @@ public static class ContinuityRules
     }
 
     /// <summary>
-    /// Brings the ends of a new arc in line with the rules: C1 becomes G1, G1 next to another
-    /// arc becomes G0, and if both ends still ask for G1 the end vertex falls back to G0.
+    /// Brings the ends of a new arc in line with the rules: C1 becomes G1, and if both ends ask
+    /// for G1 the end vertex falls back to G0. A G1 end shared with a neighbouring arc whose far
+    /// end is G1 too also falls back to G0 (that arc may have only one G1 end).
     /// The "explicit" flag of the vertex is kept.
     /// </summary>
     internal static void NormalizeArcEnds(Edge arc)
     {
         foreach (Vertex end in new[] { arc.Start, arc.End })
-        {
             if (end.Continuity == Continuity.C1)
                 end.ForceContinuity(Continuity.G1);
-            if (end.EdgeBefore.Kind == EdgeKind.Arc && end.EdgeAfter.Kind == EdgeKind.Arc)
-                end.ForceContinuity(Continuity.G0);
-        }
 
         if (arc.Start.Continuity != Continuity.G0 && arc.End.Continuity != Continuity.G0)
             arc.End.ForceContinuity(Continuity.G0);
+
+        foreach (Vertex end in new[] { arc.Start, arc.End })
+            if (!IsAllowed(end, end.Continuity))
+                end.ForceContinuity(Continuity.G0);
     }
 
     /// <summary>

@@ -47,7 +47,7 @@ public sealed class CanvasControl : Control
         Vec2 p = ToVec(e.Location);
         if (e.Button == MouseButtons.Left && Controller.MouseDown(p))
             Invalidate();
-        else if (e.Button == MouseButtons.Right)
+        else if (e.Button == MouseButtons.Right && !Controller.IsCreatingPolygon)
             ContextMenuRequested?.Invoke(Controller.HitTest(p), e.Location);
     }
 
@@ -62,7 +62,7 @@ public sealed class CanvasControl : Control
             Invalidate();
         if (hoveredBefore != Controller.Hovered)
             HoverChanged?.Invoke(this, EventArgs.Empty);
-        Cursor = Controller.IsPickingEdge ? Cursors.Cross : CursorFor(Controller.Highlighted);
+        Cursor = Controller.IsPickingEdge || Controller.IsCreatingPolygon ? Cursors.Cross : CursorFor(Controller.Highlighted);
     }
 
     protected override void OnMouseUp(MouseEventArgs e)
@@ -103,7 +103,10 @@ public sealed class CanvasControl : Control
             ILineDrawer lines = _lineAlgorithm == LineAlgorithm.Bresenham
                 ? new BresenhamLineDrawer(target)
                 : new LibraryLineDrawer(target);
-            _renderer.Render(Controller.Editor.Scene, target, lines, Controller.Highlighted);
+            PolygonDraft? draft = Controller.IsCreatingPolygon
+                ? new PolygonDraft(Controller.DraftPoints, Controller.DraftCursor)
+                : null;
+            _renderer.Render(Controller.Editor.Scene, target, lines, Controller.Highlighted, draft);
         }
         e.Graphics.DrawImageUnscaled(bitmap.Bitmap, 0, 0);
     }
