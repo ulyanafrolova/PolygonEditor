@@ -59,11 +59,12 @@ public sealed class Polygon
 
     /// <summary>
     /// Inserts a vertex in the middle of the edge (the curve's midpoint P(1/2) for curves).
-    /// The edge is replaced by two new ones:
+    /// The edge is replaced by two new ones of the same kind:
     /// - Bezier: split with de Casteljau at t = 1/2, so the shape stays exactly the same
     ///   (each half has half the tangent length at the old ends — SceneEditor re-solves C1);
-    /// - arc: two straight edges through the arc's midpoint (an arc is defined by its ends and
-    ///   continuity, so the halves could not keep the original circle);
+    /// - arc: two arcs through the arc's midpoint (G0 at the new vertex). An arc is defined by its
+    ///   ends and continuity, so the half next to a G1 end keeps the original circle, a half with
+    ///   G0 at both ends becomes a semicircle;
     /// - line: two straight edges.
     /// </summary>
     internal Vertex InsertVertex(Edge edge)
@@ -99,16 +100,28 @@ public sealed class Polygon
         _edges[index] = first;
         _edges.Insert(index + 1, second);
 
-        if (edge.Kind == EdgeKind.Bezier)
+        switch (edge.Kind)
         {
-            first.MakeBezier(p01, p012);
-            second.MakeBezier(p123, p23);
+            case EdgeKind.Bezier:
+                first.MakeBezier(p01, p012);
+                second.MakeBezier(p123, p23);
+                break;
+            case EdgeKind.Arc:
+                first.MakeArc();
+                second.MakeArc();
+                break;
+            default:
+                first.MakeLine();
+                second.MakeLine();
+                break;
         }
         return middle;
     }
 
     /// <summary>
-    /// Removes the vertex; its two edges are replaced by one straight edge.
+    /// Removes the vertex; its two edges are replaced by one edge. If both were Bezier segments the
+    /// new one is a Bezier segment with the two outer control points (the tangents at its ends stay),
+    /// if both were arcs it is an arc, otherwise a straight edge.
     /// Returns the removed edges so the scene can drop their constraints.
     /// </summary>
     internal IReadOnlyList<Edge> RemoveVertex(Vertex vertex)
@@ -123,9 +136,18 @@ public sealed class Polygon
         Edge before = _edges[beforeIndex];
         Edge after = _edges[index];
 
-        _edges[beforeIndex] = new Edge(this, before.Start, after.End);
+        var merged = new Edge(this, before.Start, after.End);
+        _edges[beforeIndex] = merged;
         _edges.RemoveAt(index);
         _vertices.RemoveAt(index);
+
+        // Topology first: the kind change consults the neighbouring edges of the merged edge's ends.
+        if (before.Kind == EdgeKind.Bezier && after.Kind == EdgeKind.Bezier)
+            merged.MakeBezier(before.Control1, after.Control2);
+        else if (before.Kind == EdgeKind.Arc && after.Kind == EdgeKind.Arc)
+            merged.MakeArc();
+        else
+            merged.MakeLine();
         return new[] { before, after };
     }
 }

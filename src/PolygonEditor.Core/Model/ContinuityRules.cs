@@ -39,20 +39,26 @@ public static class ContinuityRules
         scene.Polygons.SelectMany(p => p.Vertices).Where(v => !IsAllowed(v, v.Continuity));
 
     /// <summary>
-    /// Defaults after an edge became a Bezier segment: each end that the user has not set
-    /// explicitly gets the variant default (G1 or C1), or G1 if that is not allowed there,
-    /// or keeps its value if neither is allowed (e.g. the far end of an arc that already has G1).
+    /// Recomputes the continuity the user has not set explicitly, after the edges at these vertices
+    /// changed (edge kind, inserted or removed vertex). Next to a Bezier segment: the variant default
+    /// (G1 or C1), or G1 if that is not allowed there, or G0 if neither is (e.g. the far end of an arc
+    /// that already has G1). Elsewhere: G0, so no stale default stays after a curve was removed.
+    /// Explicit values are never changed. Implicit ends are first reset to G0, so the result does
+    /// not depend on their previous values.
     /// </summary>
-    internal static void ApplyBezierDefaults(Edge bezier)
+    internal static void RefreshDefaults(params Vertex[] vertices)
     {
-        foreach (Vertex end in new[] { bezier.Start, bezier.End })
+        foreach (Vertex vertex in vertices)
+            vertex.ApplyDefaultContinuity(Continuity.G0);
+
+        foreach (Vertex vertex in vertices)
         {
-            if (end.IsContinuityExplicit)
+            if (vertex.EdgeBefore.Kind != EdgeKind.Bezier && vertex.EdgeAfter.Kind != EdgeKind.Bezier)
                 continue;
             foreach (Continuity candidate in new[] { VariantSettings.DefaultBezierContinuity, Continuity.G1 })
-                if (IsAllowed(end, candidate))
+                if (IsAllowed(vertex, candidate))
                 {
-                    end.ApplyDefaultContinuity(candidate);
+                    vertex.ApplyDefaultContinuity(candidate);
                     break;
                 }
         }

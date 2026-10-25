@@ -33,7 +33,12 @@ public sealed class Edge
     public Vec2 Chord => End.Position - Start.Position;
     public double Length => Chord.Length;
 
-    internal void MakeLine() => Kind = EdgeKind.Line;
+    /// <summary>Switches to a straight segment; ends not set by the user drop the defaults of the former curve.</summary>
+    internal void MakeLine()
+    {
+        Kind = EdgeKind.Line;
+        ContinuityRules.RefreshDefaults(Start, End);
+    }
 
     /// <summary>Switches to Bezier with control points at 1/3 and 2/3 of the chord, pushed slightly sideways.</summary>
     internal void MakeBezier()
@@ -49,13 +54,14 @@ public sealed class Edge
         Kind = EdgeKind.Bezier;
         Control1 = control1;
         Control2 = control2;
-        ContinuityRules.ApplyBezierDefaults(this);
+        ContinuityRules.RefreshDefaults(Start, End);
     }
 
     /// <summary>Switches to a circular arc; its shape is derived from endpoints and continuity (see ArcGeometry).</summary>
     internal void MakeArc()
     {
         Kind = EdgeKind.Arc;
+        ContinuityRules.RefreshDefaults(Start, End);
         ContinuityRules.NormalizeArcEnds(this);
     }
 
