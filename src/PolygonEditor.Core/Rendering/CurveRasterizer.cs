@@ -62,10 +62,14 @@ public static class CurveRasterizer
     public static Vec2[] BezierPoints(Vec2 v0, Vec2 v1, Vec2 v2, Vec2 v3) =>
         BezierPoints(v0, v1, v2, v3, BezierSegments(v0, v1, v2, v3));
 
-    /// <summary>Arc points generated incrementally: each point is the previous radius vector rotated by a fixed angle.</summary>
+    /// <summary>
+    /// Arc points generated incrementally: each point is the previous radius vector rotated by a fixed angle.
+    /// About 4 px of arc per step; the cap keeps even a nearly straight G1 arc (radius ~10⁶ px) within
+    /// ~0.3 px of the true circle, and off-screen steps are cheap (clipped before rasterizing).
+    /// </summary>
     public static Vec2[] ArcPoints(ArcShape arc)
     {
-        int segments = Math.Clamp((int)(arc.Radius * Math.Abs(arc.Sweep) / 4), 8, 720);
+        int segments = (int)Math.Clamp(arc.Radius * Math.Abs(arc.Sweep) / 4, 8, 4096);
         double step = arc.Sweep / segments;
         double cos = Math.Cos(step), sin = Math.Sin(step);
 

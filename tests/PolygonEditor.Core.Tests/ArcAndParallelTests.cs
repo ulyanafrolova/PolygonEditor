@@ -6,7 +6,7 @@ using PolygonEditor.Core.Scenes;
 
 namespace PolygonEditor.Core.Tests;
 
-/// <summary>Parallel constraints across polygons and degenerate (huge-loop) arcs.</summary>
+/// <summary>Parallel constraints across polygons and G1 arcs with large radii.</summary>
 public class ArcAndParallelTests
 {
     private static double[] PairwiseDistances(Polygon polygon) =>
@@ -44,42 +44,42 @@ public class ArcAndParallelTests
     }
 
     [Fact]
-    public void DraggingArcEndBehindTheTangent_DoesNotCreateAHugeLoop()
+    public void DraggingArcEndBehindTheTangent_KeepsTheExactG1Arc()
     {
         var (scene, editor, p) = G1ArcScene();
-        // Far end of the arc almost on the tangent line, behind the start: the exact G1 arc would be enormous.
+        // Far end of the arc almost on the tangent line, behind the start: the exact G1 arc is a large loop.
         Vec2 target = new(-60, 1);
 
         editor.MoveVertex(p.Vertices[2], target);
 
-        Assert.Equal(target, p.Vertices[2].Position);       // still follows the cursor…
-        Assert.True(editor.LastMoveWasRigid);                // …by moving the polygon as a whole
-        Assert.True(ArcGeometry.IsWellShaped(p.Edges[1]));
+        Assert.Equal(target, p.Vertices[2].Position);
+        Assert.False(editor.LastMoveWasRigid);               // the polygon is deformed, not translated
+        Assert.Equal(new Vec2(100, 0), p.Vertices[1].Position);
         Assert.True(ConstraintSolver.AllSatisfied(scene));
     }
 
     [Fact]
-    public void MakingAnArcThatWouldLoopHugely_IsRejected()
+    public void MakingAnArcThatLoops_IsAccepted()
     {
         var scene = new Scene();
         var p = scene.AddPolygon((0, 0), (100, 0), (-50, 2), (-60, 80));
         var editor = new SceneEditor(scene);
         Assert.True(editor.SetContinuity(p.Vertices[1], Continuity.G1));
 
-        bool changed = editor.SetEdgeKind(p.Edges[1], EdgeKind.Arc);
+        Assert.True(editor.SetEdgeKind(p.Edges[1], EdgeKind.Arc));
 
-        Assert.False(changed);
-        Assert.Equal(EdgeKind.Line, p.Edges[1].Kind);
+        Assert.True(Math.Abs(ArcGeometry.Compute(p.Edges[1])!.Value.Sweep) > Math.PI);
+        Assert.True(ConstraintSolver.AllSatisfied(scene));
     }
 
     [Fact]
-    public void ArcsUpToASemicircle_AreAlwaysWellShaped()
+    public void FlatArcWithLargeRadius_DoesNotMoveThePolygon()
     {
         var (_, editor, p) = G1ArcScene();
-        // Far end in front of the tangent: a flat arc with a large radius is fine.
+        // Far end in front of the tangent: a flat arc with a large radius.
         editor.MoveVertex(p.Vertices[2], new Vec2(400, 3));
 
         Assert.False(editor.LastMoveWasRigid);
-        Assert.True(ArcGeometry.IsWellShaped(p.Edges[1]));
+        Assert.Equal(new Vec2(400, 3), p.Vertices[2].Position);
     }
 }

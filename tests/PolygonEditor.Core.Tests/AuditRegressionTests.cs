@@ -79,9 +79,85 @@ public class AuditRegressionTests
         Edge arc = scene.Polygons[1].Edges[1];
         Vec2 arcMiddle = EdgeGeometry.PointAt(arc, 0.5);
 
+        Polygon w2 = arc.Polygon;
         editor.InsertVertex(arc, out Vertex inserted);
 
         Assert.True(Vec2.Distance(arcMiddle, inserted.Position) < 1e-9);
+        Assert.Equal(EdgeKind.Arc, inserted.EdgeBefore.Kind);
+        Assert.Equal(EdgeKind.Arc, inserted.EdgeAfter.Kind);
+        Assert.Equal(Continuity.G0, inserted.Continuity);
+        Assert.Equal(5, w2.Vertices.Count);
+        Assert.True(ConstraintSolver.AllSatisfied(scene));
+    }
+
+    [Fact]
+    public void InsertVertexOnG1Arc_HalfAtTheG1EndKeepsTheCircle()
+    {
+        var scene = InitialScene.Create();
+        var editor = new SceneEditor(scene);
+        Edge arc = scene.Polygons[2].Edges[1]; // W3: G1 at the start of the arc
+        ArcShape before = ArcGeometry.Compute(arc)!.Value;
+
+        editor.InsertVertex(arc, out Vertex inserted);
+
+        ArcShape firstHalf = ArcGeometry.Compute(inserted.EdgeBefore)!.Value;
+        Assert.True(Vec2.Distance(before.Center, firstHalf.Center) < 1e-6);
+        Assert.Equal(before.Radius, firstHalf.Radius, 6);
+    }
+
+    [Fact]
+    public void CurveRemoved_DropsItsDefaultContinuityButKeepsExplicitOne()
+    {
+        var scene = new Scene();
+        var p = scene.AddPolygon((0, 0), (200, 0), (200, 200), (0, 200));
+        var editor = new SceneEditor(scene);
+        Assert.True(editor.SetEdgeKind(p.Edges[0], EdgeKind.Bezier));
+        Assert.True(editor.SetContinuity(p.Vertices[0], Continuity.C1));
+        Assert.Equal(Continuity.G1, p.Vertices[1].Continuity); // default
+
+        Assert.True(editor.SetEdgeKind(p.Edges[0], EdgeKind.Line));
+
+        Assert.Equal(Continuity.G0, p.Vertices[1].Continuity);  // default dropped
+        Assert.Equal(Continuity.C1, p.Vertices[0].Continuity);  // explicit kept
+
+        // A new arc next to vertex 1 now has G0 at both ends: a semicircle on its chord.
+        Assert.True(editor.SetEdgeKind(p.Edges[1], EdgeKind.Arc));
+        Assert.Equal(Continuity.G0, p.Vertices[1].Continuity);
+        Assert.Equal(100, ArcGeometry.Compute(p.Edges[1])!.Value.Radius, 9);
+    }
+
+    [Fact]
+    public void RemoveVertexBetweenTwoBeziers_KeepsABezierWithTheOuterHandles()
+    {
+        var scene = new Scene();
+        var p = scene.AddPolygon((0, 0), (100, -40), (200, 0), (200, 200), (0, 200));
+        var editor = new SceneEditor(scene);
+        Assert.True(editor.SetEdgeKind(p.Edges[0], EdgeKind.Bezier));
+        Assert.True(editor.SetEdgeKind(p.Edges[1], EdgeKind.Bezier));
+        Vec2 outer1 = p.Edges[0].Control1, outer2 = p.Edges[1].Control2;
+
+        Assert.True(editor.RemoveVertex(p.Vertices[1]));
+
+        Edge merged = p.Edges[0];
+        Assert.Equal(EdgeKind.Bezier, merged.Kind);
+        Assert.Equal(outer1, merged.Control1);
+        Assert.Equal(outer2, merged.Control2);
+        Assert.True(ConstraintSolver.AllSatisfied(scene));
+    }
+
+    [Fact]
+    public void RemoveVertexBetweenBezierAndLine_DropsDefaultContinuityAtTheEnds()
+    {
+        var scene = new Scene();
+        var p = scene.AddPolygon((0, 0), (100, 0), (200, 0), (200, 200), (0, 200));
+        var editor = new SceneEditor(scene);
+        Assert.True(editor.SetEdgeKind(p.Edges[0], EdgeKind.Bezier));
+        Assert.Equal(Continuity.G1, p.Vertices[0].Continuity);
+
+        Assert.True(editor.RemoveVertex(p.Vertices[1]));
+
+        Assert.Equal(EdgeKind.Line, p.Edges[0].Kind);
+        Assert.Equal(Continuity.G0, p.Vertices[0].Continuity);
     }
 
     [Fact]

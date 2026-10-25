@@ -8,8 +8,8 @@ Wariant zadania - A–K, więc zaimplementowałam ograniczenie równoległości 
 
 - Wielokąty mogą mieć samoprzecięcia. Wnętrze (do chwytania myszą) wyznacza reguła parzystości (even-odd).
 - Wielokąt ma co najmniej 3 wierzchołki.
-- Dodanie wierzchołka wstawia go w środku krawędzi, a dla krzywych – w punkcie P(1/2) na krzywej. Krawędź Béziera jest dzielona algorytmem de Casteljau w t = 1/2, więc kształt krzywej się nie zmienia. Łuk zamienia się w dwa odcinki przechodzące przez środek łuku (łuk jest wyznaczany z końców i ciągłości, więc jego połówki nie mogłyby zachować tego samego okręgu).
-- Usunięcie wierzchołka zastępuje dwie jego krawędzie jednym odcinkiem.
+- Dodanie wierzchołka wstawia go w środku krawędzi, a dla krzywych – w punkcie P(1/2) na krzywej. Obie nowe krawędzie mają rodzaj dzielonej krawędzi. Krawędź Béziera jest dzielona algorytmem de Casteljau w t = 1/2, więc kształt krzywej się nie zmienia. Łuk dzieli się na dwa łuki przechodzące przez środek łuku, z G0 w nowym wierzchołku; połówka przy końcu z G1 leży na tym samym okręgu, a połówka z G0 na obu końcach staje się półokręgiem (łuk jest wyznaczany z końców i ciągłości).
+- Usunięcie wierzchołka zastępuje dwie jego krawędzie jedną: gdy obie były segmentami Béziera – segmentem Béziera z dwoma zewnętrznymi punktami kontrolnymi (styczne na końcach się nie zmieniają), gdy obie były łukami – łukiem, w pozostałych przypadkach – odcinkiem.
 - W obu przypadkach ograniczenia krawędzi, które przestały istnieć, są usuwane, a solver odtwarza relacje w sąsiednich wierzchołkach (wierzchołki dzielonej lub nowej krawędzi pozostają na miejscu). Przy podziale Béziera jest to konieczne mimo zachowania kształtu: każda połówka ma na starych końcach tylko połowę dawnego wektora stycznego, co łamie C1. Jeśli relacji nie da się odtworzyć, zmiana topologii zostaje, geometria wraca do stanu tuż po zmianie i pojawia się komunikat.
 - Przy zamianie krawędzi na Béziera punkty kontrolne są umieszczane w 1/3 i 2/3 cięciwy (lekko odsunięte w bok), a następnie dopasowywane do ciągłości sąsiadów.
 
@@ -26,7 +26,8 @@ Wariant zadania - A–K, więc zaimplementowałam ograniczenie równoległości 
 ## Ciągłość
 
 - Klasa ciągłości jest atrybutem **wierzchołka** (domyślnie G0) i ma znaczenie tylko wtedy, gdy sąsiaduje on z krzywą.
-- Klasa wybrana przez użytkownika jest zapamiętywana jako „jawna” i nie jest nadpisywana wartością domyślną przy zamianie krawędzi na Béziera. Wartość domyślna jest nadawana tylko wtedy, gdy pozwalają na to reguły (np. drugi koniec łuku, który ma już G1 na pierwszym końcu, pozostaje G0).
+- Klasa wybrana przez użytkownika jest zapamiętywana jako „jawna” i nigdy nie jest nadpisywana wartością domyślną.
+- Klasa niewybrana jawnie jest przeliczana przy każdej zmianie rodzaju krawędzi oraz przy dodaniu i usunięciu wierzchołka: przy segmencie Béziera – G1 (wartość domyślna wariantu), o ile pozwalają na to reguły (np. drugi koniec łuku, który ma już G1 na pierwszym końcu, dostaje G0); w pozostałych przypadkach – G0. Dzięki temu po zamianie krzywej z powrotem na odcinek nie zostaje „stara” wartość domyślna (np. nowy łuk obok takiego wierzchołka jest półokręgiem, a nie łukiem stycznym).
 - Dla łuku dozwolone są tylko G0 i G1, a G1 może mieć tylko jeden koniec łuku.
 - Nie jest dozwolone G1 w wierzchołku między dwoma łukami: łuk z G1 bierze styczną od sąsiada, więc dwa łuki czekałyby na siebie nawzajem, a wspólny kierunek nie byłby wyznaczony.
 - Przy zamianie krawędzi na łuk: C1 na końcu staje się G1, G1 między dwoma łukami staje się G0, a jeśli oba końce mają G1, koniec łuku przechodzi na G0.
@@ -34,7 +35,7 @@ Wariant zadania - A–K, więc zaimplementowałam ograniczenie równoległości 
 - Łuk nie ma własnych parametrów – jest wyznaczany z wierzchołków i ciągłości:
   - G0 na obu końcach: półokrąg o promieniu równym połowie cięciwy, rysowany po lewej stronie krawędzi (patrząc od wierzchołka początkowego do końcowego);
   - G1 na jednym końcu: łuk styczny w tym końcu do sąsiedniej krawędzi i przechodzący przez drugi koniec; gdy styczna pokrywa się z cięciwą (promień nieskończony), krawędź rysowana jest jako odcinek.
-  - Jeśli drugi koniec leży „za” styczną, łuk musi zatoczyć pętlę (ponad 180°), a gdy ten koniec zbliża się do prostej stycznej, promień rośnie bez ograniczeń. Pętle o promieniu większym niż 2,5 długości cięciwy są traktowane jako niedopuszczalna geometria: zmiana, która by je wytworzyła, jest odrzucana, a przy przeciąganiu cały wielokąt jest przesuwany zamiast odkształcany. Łuki do półokręgu (choćby bardzo płaskie) są zawsze dopuszczalne.
+  - Jeśli drugi koniec leży „za” styczną, łuk zatacza pętlę (ponad 180°), a gdy ten koniec zbliża się do prostej stycznej, promień rośnie bez ograniczeń. Jest to poprawna geometria G1, więc nie jest ograniczana; części łuku poza oknem są obcinane przy rysowaniu.
 
 ## Edycja myszą
 
@@ -42,7 +43,7 @@ Wariant zadania - A–K, więc zaimplementowałam ograniczenie równoległości 
 - Przy przeciąganiu wierzchołka sąsiednie punkty kontrolne przesuwają się razem z nim (zachowują kształt krzywych przy wierzchołku).
 - Przy przeciąganiu punktu kontrolnego najpierw przypinane są także wierzchołki jego segmentu. Dopiero gdy przy takim przypięciu ograniczeń nie da się spełnić (przypadek wyjątkowy), wierzchołki są zwalniane. Przykład: C1 obok odcinka o stałej długości L wymaga |V − P| = L/3, więc przesunięcie punktu kontrolnego P musi przesunąć wierzchołek V. W scenie demonstracyjnej taka sytuacja nie występuje – ograniczenie długości w W1 leży na krawędzi niesąsiadującej z krzywą.
 - Przy G1 przesunięcie punktu kontrolnego obraca sąsiedni odcinek wokół wspólnego wierzchołka o ten sam kąt, o który obrócił się uchwyt. Krótki uchwyt i długi odcinek działają jak dźwignia: mały ruch kursora blisko wierzchołka może mocno przesunąć drugi koniec odcinka (a przez równoległość – także krawędź innego wielokąta). To poprawna geometria G1, a nie niestabilność solvera.
-- Ostateczność: jeśli ograniczeń nie da się spełnić, cały wielokąt jest przesuwany równolegle (translacja zachowuje każde ograniczenie i każdą ciągłość). Pasek stanu informuje o tym.
+- Ostateczność: jeśli ograniczeń nie da się spełnić przy przypiętym przeciąganym elemencie (np. sprzeczne długości i równoległości), cały wielokąt jest przesuwany równolegle (translacja zachowuje każde ograniczenie i każdą ciągłość), więc element nadal podąża za kursorem. Pasek stanu informuje o tym.
 
 ## Rysowanie
 

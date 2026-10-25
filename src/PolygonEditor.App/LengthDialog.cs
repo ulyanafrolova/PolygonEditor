@@ -4,9 +4,11 @@ namespace PolygonEditor.App;
 public sealed class LengthDialog : Form
 {
     private readonly NumericUpDown _value;
+    private readonly double _initial;
 
     private LengthDialog(string edgeName, double initial)
     {
+        _initial = initial;
         SuspendLayout();
         // Layout below is written for 96 DPI; WinForms rescales positions and sizes to the actual DPI.
         AutoScaleDimensions = new SizeF(96F, 96F);
@@ -22,7 +24,7 @@ public sealed class LengthDialog : Form
         {
             Location = new Point(80, 12),
             Width = 160,
-            DecimalPlaces = 1,
+            DecimalPlaces = 2,
             Minimum = 1,
             Maximum = 5000,
             Value = (decimal)Math.Clamp(initial, 1, 5000),
@@ -42,6 +44,19 @@ public sealed class LengthDialog : Form
     public static double? Ask(IWin32Window owner, string edgeName, double initial)
     {
         using var dialog = new LengthDialog(edgeName, initial);
-        return dialog.ShowDialog(owner) == DialogResult.OK ? (double)dialog._value.Value : null;
+        return dialog.ShowDialog(owner) == DialogResult.OK ? dialog.Result : null;
+    }
+
+    /// <summary>
+    /// The box shows the value rounded to 0.01; if the user did not change it, the exact current
+    /// length is kept, so confirming the default does not move the edge.
+    /// </summary>
+    private double Result
+    {
+        get
+        {
+            double entered = (double)_value.Value;
+            return Math.Abs(entered - _initial) < 0.005 ? _initial : entered;
+        }
     }
 }
