@@ -52,10 +52,17 @@ Nowy rodzaj ograniczenia wymaga tylko nowej klasy z metodami `Error` i `Project`
 Plik `Scenes/InitialScene.cs`. Dodanie wielokąta to jedno wywołanie, a krawędzie numerowane są od 0:
 
 ```
-var w4 = scene.AddPolygon((100, 600), (250, 580), (300, 700));
+var w4 = scene.AddPolygon((600, 600), (820, 540), (760, 700));
 w4.Edges[0].MakeBezier();
 scene.AddFixedLength(w4.Edges[1]);
 scene.AddParallel(w4.Edges[2], w1.Edges[3]);
 ```
 
-Punkty kontrolne wystarczy podać w przybliżeniu: na końcu `Create` solver (z przypiętymi wszystkimi wierzchołkami) dopasowuje je do wymaganej ciągłości. Długości i równoległości muszą być spełnione przez same wierzchołki – w przeciwnym razie tworzenie sceny kończy się wyjątkiem, a test `InitialScene_SatisfiesItsConstraints` to wykrywa.
+W przykładzie krawędź 2 trójkąta W4, od (760, 700) do (600, 600), ma kierunek (−160, −100) – taki sam jak krawędź 3 wielokąta W1, od (250, 420) do (90, 320) – więc równoległość jest spełniona już przez podane współrzędne.
+
+Na końcu `Create` uruchamiany jest solver (`Settle`):
+
+- najpierw z przypiętymi wszystkimi wierzchołkami – wierzchołki zostają dokładnie tam, gdzie je zapisano, a dopasowywane są tylko punkty kontrolne (do wymaganej ciągłości), więc punkty kontrolne wystarczy podać w przybliżeniu;
+- jeśli zapisane wierzchołki nie spełniają długości lub równoległości (współrzędne przybliżone), przypinany jest tylko pierwszy wierzchołek każdego wielokąta, a solver poprawia pozostałe.
+
+Wyjątek pojawia się tylko przy ograniczeniach wzajemnie sprzecznych. Przykład z tej strony sprawdza test `DocumentationExample_AddsPolygonWithoutMovingVertices`, a całą scenę – test `InitialScene_SatisfiesItsConstraints`.

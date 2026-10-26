@@ -26,8 +26,8 @@ public sealed class LengthDialog : Form
             Width = 160,
             DecimalPlaces = 2,
             Minimum = 1,
-            Maximum = 5000,
-            Value = (decimal)Math.Clamp(initial, 1, 5000),
+            Maximum = 100000,
+            Value = (decimal)Math.Clamp(initial, 1, 100000),
         };
         var ok = new Button { Text = "OK", DialogResult = DialogResult.OK, Location = new Point(84, 52), Width = 75 };
         var cancel = new Button { Text = "Anuluj", DialogResult = DialogResult.Cancel, Location = new Point(165, 52), Width = 75 };

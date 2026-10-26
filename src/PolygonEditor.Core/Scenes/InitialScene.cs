@@ -1,4 +1,5 @@
 using PolygonEditor.Core.Constraints.Solver;
+using PolygonEditor.Core.Editing;
 using PolygonEditor.Core.Geometry;
 using PolygonEditor.Core.Model;
 
@@ -9,7 +10,8 @@ namespace PolygonEditor.Core.Scenes;
 /// optionally change edge kinds (edge.MakeBezier / MakeArc), continuity and constraints.
 /// Edge i connects vertex i with vertex i + 1 (the last one closes the polygon).
 /// Control points only need to be roughly right: at the end the solver adjusts them to the
-/// required continuity (vertices stay where they were written).
+/// required continuity (vertices stay where they were written if they already satisfy the
+/// constraints; otherwise the solver moves them as little as needed, see Settle).
 /// </summary>
 public static class InitialScene
 {
@@ -40,11 +42,24 @@ public static class InitialScene
         return scene;
     }
 
-    /// <summary>Lets the solver fit control points to the continuity; every vertex is pinned.</summary>
-    private static void Settle(Scene scene)
+    /// <summary>
+    /// Lets the solver fit the scene to its relations. First every vertex is pinned, so only control
+    /// points move and the vertices stay exactly where they were written. If the written vertices do
+    /// not satisfy the lengths / parallels (approximate coordinates), only the first vertex of each
+    /// polygon is pinned and the solver adjusts the rest. Throws only for contradictory constraints.
+    /// </summary>
+    internal static void Settle(Scene scene)
     {
+        var snapshot = GeometrySnapshot.Capture(scene);
+        var solver = new ConstraintSolver();
+
         var vertices = scene.Polygons.SelectMany(p => p.Vertices).Select(PointRef.Of).ToList();
-        if (!new ConstraintSolver().Solve(scene, vertices))
+        if (solver.Solve(scene, vertices))
+            return;
+
+        snapshot.Restore();
+        var anchors = scene.Polygons.Select(p => PointRef.Of(p.Vertices[0])).ToList();
+        if (!solver.Solve(scene, anchors))
             throw new InvalidOperationException("The initial scene is inconsistent: check its constraints.");
     }
 
