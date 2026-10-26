@@ -19,9 +19,6 @@ public static class Palette
     public static readonly Color Highlight = Color.FromArgb(0, 170, 90);
 }
 
-/// <summary>Polygon being created: vertices clicked so far and the current cursor position.</summary>
-public sealed record PolygonDraft(IReadOnlyList<Vec2> Points, Vec2 Cursor);
-
 /// <summary>Draws the whole scene: edges (lines, Bezier curves, arcs), vertices, continuity and constraint icons.</summary>
 public sealed class SceneRenderer
 {
@@ -29,8 +26,7 @@ public sealed class SceneRenderer
     private const double ControlPointRadius = 4;
 
     /// <param name="highlight">Hovered or dragged element, drawn in the highlight color.</param>
-    /// <param name="draft">Polygon being created: clicked vertices and the cursor (null when not creating).</param>
-    public void Render(Scene scene, IRenderTarget target, ILineDrawer lines, HitTarget? highlight = null, PolygonDraft? draft = null)
+    public void Render(Scene scene, IRenderTarget target, ILineDrawer lines, HitTarget? highlight = null)
     {
         target.Clear(Palette.Background);
 
@@ -44,23 +40,6 @@ public sealed class SceneRenderer
 
         DrawConstraintIcons(scene, target);
         DrawHandleHighlight(highlight, target);
-        if (draft is not null)
-            DrawDraft(draft, target, lines);
-    }
-
-    /// <summary>Clicked edges solid, the edge to the cursor dashed; the first vertex is ringed (click it to close).</summary>
-    private static void DrawDraft(PolygonDraft draft, IRenderTarget target, ILineDrawer lines)
-    {
-        IReadOnlyList<Vec2> points = draft.Points;
-        if (points.Count == 0)
-            return;
-
-        lines.DrawPolyline(points, Palette.Highlight);
-        lines.DrawLine(points[^1], draft.Cursor, Palette.Highlight, dashed: true);
-        foreach (Vec2 p in points)
-            target.FillCircle(p, VertexRadius, Palette.Highlight);
-        if (points.Count >= 3)
-            target.DrawCircle(points[0], VertexRadius + 4, Palette.Highlight);
     }
 
     private static bool IsHighlighted(Edge edge, HitTarget? highlight) => highlight switch

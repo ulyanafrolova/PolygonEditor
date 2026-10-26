@@ -44,10 +44,6 @@ public sealed class EditorContextMenu
             case EdgeHit e:
                 AddEdgeItems(e.Edge);
                 break;
-            case PolygonHit p:
-                _menu.Items.Add(Header($"Wielokąt {p.Target.Name}"));
-                _menu.Items.Add(Item("Usuń wielokąt", () => _editor.RemovePolygon(p.Target)));
-                break;
         }
 
         if (_menu.Items.Count > 0)

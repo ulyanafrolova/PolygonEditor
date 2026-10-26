@@ -12,7 +12,6 @@ public sealed class Scene
     private readonly List<Polygon> _polygons = new();
     private readonly List<Constraint> _constraints = new();
     private int _nextConstraintId = 1;
-    private int _nextPolygonNumber = 1; // names stay unique after a polygon is removed
 
     public IReadOnlyList<Polygon> Polygons => _polygons;
     public IReadOnlyList<Constraint> Constraints => _constraints;
@@ -22,18 +21,9 @@ public sealed class Scene
 
     internal Polygon AddPolygon(IEnumerable<Vec2> points)
     {
-        var polygon = new Polygon(points, $"W{_nextPolygonNumber}");
-        _nextPolygonNumber++;
+        var polygon = new Polygon(points, $"W{_polygons.Count + 1}");
         _polygons.Add(polygon);
         return polygon;
-    }
-
-    /// <summary>Removes the polygon together with every constraint that involves one of its edges.</summary>
-    internal void RemovePolygon(Polygon polygon)
-    {
-        if (!_polygons.Remove(polygon))
-            throw new ArgumentException("Polygon does not belong to this scene.", nameof(polygon));
-        _constraints.RemoveAll(c => c.Edges.Any(e => e.Polygon == polygon));
     }
 
     /// <summary>Fixed edge length; by default the current length.</summary>
