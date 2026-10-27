@@ -49,5 +49,6 @@ Wariant zadania - A–K, więc zaimplementowałam ograniczenie równoległości 
 
 ## Rysowanie
 
-- Wybrany algorytm (biblioteczny / Bresenham) dotyczy wszystkich linii. Znaczniki wierzchołków i etykiety są elementami pomocniczymi i zawsze rysuje je GDI+.
-- Krzywe rysowane są jako łamane (ok. 4 piksele na odcinek).
+- Wybrany algorytm (biblioteczny / Bresenham / Wu) dotyczy wszystkich linii: krawędzi, krzywych Béziera, łuków i wieloboków Béziera. Znaczniki wierzchołków i etykiety są elementami pomocniczymi i zawsze rysuje je GDI+.
+- Krzywe Béziera rysowane są jako łamane (ok. 4 piksele na odcinek). Łuki – w trybach bibliotecznym i Bresenhama jako łamane, w trybie Wu bezpośrednio algorytmem Wu dla okręgu (ograniczonym do kątów łuku).
+- Grubość jest atrybutem krawędzi (1–10 px), mierzoną prostopadle do linii. W trybie bibliotecznym realizuje ją GDI+ (szerokość pióra), w trybach Bresenhama i Wu – własny kod (zakładka „Algorytmy”, „Grubość linii”). Wieloboki Béziera (linie pomocnicze) mają zawsze 1 px.

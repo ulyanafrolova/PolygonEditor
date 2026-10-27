@@ -88,12 +88,14 @@ Własna implementacja algorytmów Xiaolina Wu (`WuLineDrawer`). Piksel (x, y) to
 - Grubość 1: przedział [|dy| − ½, |dy| + ½] – klasyczne intensywności Wu dla okręgu.
 - Łuk: rysowane są tylko piksele, których kierunek od środka leży w zakresie kątów łuku.
 - Kolumny i wiersze są ograniczone do obszaru rysowania, więc nawet łuk G1 o promieniu ~10⁶ px kosztuje tyle, ile pikseli okna.
+- Różnica względem podręcznikowej wersji algorytmu Wu dla okręgu (środek całkowity, symetria ósemkowa, przyrostowe D(r, j) = ⌈√(r² − j²)⌉ − √(r² − j²)): środki łuków są niecałkowite, łuk to tylko wycinek okręgu, a okrąg może być gruby, więc symetria ósemkowa nie ma zastosowania. Dla grubości 1 intensywności są dokładnie te same co w klasycznym algorytmie: piksele ⌊m⌋ i ⌊m⌋ + 1 (m = √(r² − dx²)) dostają 1 − frac(m) i frac(m), a ich suma w każdej kolumnie (wierszu) wynosi 1.
 
 ## Grubość linii
 
 - **Biblioteczny (GDI+)**: szerokość pióra, zaokrąglone końce (łamane łączą się bez szczerb).
 - **Wu (ręcznie)**: przedział w kolumnie ma długość w·√(1 + g²) zamiast 1 (w – grubość mierzona prostopadle do odcinka), więc piksele wewnętrzne są pokryte w pełni, a dwa skrajne – częściowo (wygładzone brzegi). Dla okręgu przedziałem jest pierścień [√(r_wew² − dx²), √(r_zew² − dx²)], r_wew/zew = r ∓ w/2.
-- **Bresenham (ręcznie)**: powielanie pikseli – każdy piksel linii jednopikselowej zastępowany jest serią w pikseli w poprzek osi wiodącej.
+- **Bresenham (ręcznie)**: powielanie pikseli – każdy piksel linii jednopikselowej zastępowany jest serią pikseli w poprzek osi wiodącej. Seria n pikseli w poprzek osi wiodącej ma szerokość prostopadłą n/√(1 + m²) (m = |mniejszy przyrost| / |większy przyrost|), więc seria ma długość round(w·√(1 + m²)) – linia ukośna jest tak samo gruba jak pozioma.
+- **Łączenia grubych łamanych (Wu i Bresenham)**: każdy odcinek łamanej jest ucinany w poprzek swojej osi wiodącej. Gdy krzywa przechodzi przez kierunek 45° (oś wiodąca się zmienia), dwa ucięte końce zostawiają po zewnętrznej stronie klinowate wcięcie. Dlatego w każdym wewnętrznym punkcie łamanej stawiany jest „stempel” – wypełnione koło o średnicy w (łączenie zaokrąglone, `DiscStamp`). W trybie Wu koło ma wygładzony brzeg (pokrycie piksela ≈ r + ½ − odległość jego środka) i jest łączone z pokryciem linii przez maksimum, więc nie przyciemnia wygładzonych brzegów; w trybie Bresenhama piksel należy do koła, gdy jego środek leży w kole. Łuki w trybie Wu nie potrzebują łączeń – są rysowane bezpośrednio jako pierścień.
 
 ## Segment Béziera – algorytm przyrostowy
 

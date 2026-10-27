@@ -38,6 +38,12 @@ public static class InitialScene
         w3.Vertices[1].SetContinuity(Continuity.G1);
         w3.Edges[1].MakeArc();
 
+        // Drawing widths: a thick curve, arc and line next to thin edges (compare the line algorithms).
+        w1.Edges[1].Thickness = 4;
+        w2.Edges[1].Thickness = 6;
+        w3.Edges[1].Thickness = 3;
+        w2.Edges[3].Thickness = 3;
+
         Settle(scene);
         return scene;
     }

@@ -42,7 +42,7 @@ Jeżeli zmiany nie da się pogodzić z istniejącymi ograniczeniami, jest ona co
 ## Pasek narzędzi (pod menu)
 
 - **Rysowanie odcinków** – przyciski radiowe, wybór algorytmu: biblioteczny (GDI+, z wygładzaniem), własna implementacja algorytmu Bresenhama albo własna implementacja algorytmów Wu z antyaliasingiem (odcinki i łuki okręgów). Wybór dotyczy wszystkich linii: krawędzi, krzywych Béziera (rysowanych jako łamane), łuków i wieloboków Béziera. W wąskim oknie przyciski przechodzą do drugiego wiersza.
-- Grubość krawędzi: w trybie bibliotecznym realizuje ją GDI+ (szerokość pióra), w trybach własnych – ręcznie (Bresenham: powielanie pikseli, Wu: pasmo z antyaliasingiem).
+- Grubość krawędzi: w trybie bibliotecznym realizuje ją GDI+ (szerokość pióra), w trybach własnych – ręcznie (Bresenham: powielanie pikseli, Wu: pasmo z antyaliasingiem; w obu łamane mają zaokrąglone łączenia). W scenie początkowej grubsze są: krzywa Béziera W1 (4 px), łuk W2 (6 px), krawędź 3 W2 (3 px) i łuk W3 (3 px) – po przełączeniu algorytmu widać różnicę.
 
 Gdy okno jest mniejsze niż scena, pojawiają się paski przewijania.
 

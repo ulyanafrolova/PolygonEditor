@@ -165,17 +165,71 @@ public class RasterizationTests
         Assert.Contains((10, 51), target.Pixels);
     }
 
+    [Fact]
+    public void Bresenham_ThickDiagonalIsAsWideAsThickHorizontal()
+    {
+        var target = new RecordingTarget(100, 100);
+        var drawer = new BresenhamLineDrawer(target);
+
+        drawer.DrawLine(new Vec2(10, 10), new Vec2(50, 50), System.Drawing.Color.Black, thickness: 6);
+
+        // Run across the driving axis: 6·√2 ≈ 8 pixels, i.e. 6 px perpendicular to the line.
+        Assert.Equal(41 * 8, target.Pixels.Count);
+    }
+
+    // Right-angle turn: the horizontal segment is cut at x = 40, the vertical one at y = 50, so
+    // without a round join the outer corner around (42, 48) would stay empty.
+    private static readonly Vec2[] RightAngle = { new(10, 50), new(40, 50), new(40, 80) };
+
+    [Fact]
+    public void Wu_ThickPolylineHasNoNotchAtJoint()
+    {
+        var target = new RecordingTarget(100, 100);
+
+        new WuLineDrawer(target).DrawPolyline(RightAngle, System.Drawing.Color.Black, thickness: 6);
+
+        Assert.Contains((42, 48), target.Pixels);
+        Assert.True(target.Coverage[(41, 49)] >= 0.99);
+        Assert.All(target.Coverage.Values, c => Assert.InRange(c, 0, 1));
+    }
+
+    [Fact]
+    public void Bresenham_ThickPolylineHasNoNotchAtJoint()
+    {
+        var target = new RecordingTarget(100, 100);
+
+        new BresenhamLineDrawer(target).DrawPolyline(RightAngle, System.Drawing.Color.Black, thickness: 6);
+
+        Assert.Contains((42, 48), target.Pixels);
+    }
+
+    [Fact]
+    public void ThinPolylineGetsNoJoints()
+    {
+        var thin = new RecordingTarget(100, 100);
+        new BresenhamLineDrawer(thin).DrawPolyline(RightAngle, System.Drawing.Color.Black);
+
+        Assert.DoesNotContain((42, 48), thin.Pixels);
+        Assert.Equal(31 + 31 - 1, thin.Pixels.Count);
+    }
+
     private sealed class RecordingTarget : IRenderTarget
     {
         public RecordingTarget(int width, int height) => (Width, Height) = (width, height);
 
         public HashSet<(int, int)> Pixels { get; } = new();
+        public Dictionary<(int, int), double> Coverage { get; } = new();
         public int Width { get; }
         public int Height { get; }
 
         public void Clear(System.Drawing.Color color) => Pixels.Clear();
         public void SetPixel(int x, int y, System.Drawing.Color color) => Pixels.Add((x, y));
-        public void BlendPixel(int x, int y, System.Drawing.Color color, double coverage) => Pixels.Add((x, y));
+
+        public void BlendPixel(int x, int y, System.Drawing.Color color, double coverage)
+        {
+            Pixels.Add((x, y));
+            Coverage[(x, y)] = coverage;
+        }
         public void DrawLine(Vec2 a, Vec2 b, System.Drawing.Color color, bool dashed, int thickness) { }
         public void FillCircle(Vec2 center, double radius, System.Drawing.Color color) { }
         public void DrawCircle(Vec2 center, double radius, System.Drawing.Color color) { }

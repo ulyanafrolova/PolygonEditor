@@ -26,10 +26,17 @@ public sealed class WuLineDrawer : ILineDrawer
     /// Coverage of all segments is summed first (capped at 1) and blended once. At a joint both
     /// segments cover half of the shared pixel (xgap = ½); blending them one after the other would
     /// give only 1 − ½·½ = ¾ and leave a lighter spot at every joint of a curve.
+    /// A thick polyline also gets an antialiased disc at every joint (round join, see DiscStamp);
+    /// it is combined by maximum, so it fills the notch without darkening the line's smooth edges.
     /// </summary>
     public void DrawPolyline(IReadOnlyList<Vec2> points, Color color, bool dashed = false, int thickness = 1)
     {
         var coverage = new Dictionary<(int X, int Y), double>();
+        if (thickness > 1 && !dashed)
+            foreach (Vec2 joint in DiscStamp.Joints(points, _target, thickness))
+                foreach (var (x, y, c) in DiscStamp.Rasterize(joint, thickness / 2.0))
+                    coverage[(x, y)] = Math.Max(coverage.GetValueOrDefault((x, y)), c);
+        var lineCoverage = new Dictionary<(int X, int Y), double>();
         for (int i = 0; i + 1 < points.Count; i++)
         {
             Vec2 a = points[i], b = points[i + 1];
@@ -43,12 +50,14 @@ public sealed class WuLineDrawer : ILineDrawer
             {
                 int step = (steep ? y : x) - first;
                 if (!dashed || step / DashLength % 2 == 0)
-                    coverage[(x, y)] = coverage.GetValueOrDefault((x, y)) + c;
+                    lineCoverage[(x, y)] = lineCoverage.GetValueOrDefault((x, y)) + c;
             }
         }
 
+        foreach (var (pixel, c) in lineCoverage)
+            coverage[pixel] = Math.Max(coverage.GetValueOrDefault(pixel), Math.Min(1, c));
         foreach (var ((x, y), c) in coverage)
-            _target.BlendPixel(x, y, color, Math.Min(1, c));
+            _target.BlendPixel(x, y, color, c);
     }
 
     public void DrawArc(ArcShape arc, Color color, int thickness = 1)
