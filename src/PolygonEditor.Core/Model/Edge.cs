@@ -23,6 +23,12 @@ public sealed class Edge
 
     public EdgeKind Kind { get; private set; } = EdgeKind.Line;
 
+    public const int MinThickness = 1;
+    public const int MaxThickness = 10;
+
+    /// <summary>Line width in pixels used when drawing the edge (lines, Bezier curves and arcs alike).</summary>
+    public int Thickness { get; internal set; } = MinThickness;
+
     /// <summary>Bezier control points V1 and V2 (V0 = Start, V3 = End). Used only when Kind == Bezier.</summary>
     public Vec2 Control1 { get; internal set; }
     public Vec2 Control2 { get; internal set; }

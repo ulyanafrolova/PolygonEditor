@@ -16,7 +16,14 @@ public sealed class SceneEditor
 
     public SceneEditor(Scene scene) => Scene = scene;
 
-    public Scene Scene { get; }
+    public Scene Scene { get; private set; }
+
+    /// <summary>Replaces the edited scene (e.g. one loaded from a file).</summary>
+    public void LoadScene(Scene scene)
+    {
+        Scene = scene;
+        LastMoveWasRigid = false;
+    }
 
     /// <summary>True if the last move could not be solved and the whole polygon was translated instead.</summary>
     public bool LastMoveWasRigid { get; private set; }
@@ -111,6 +118,10 @@ public sealed class SceneEditor
             },
             new[] { PointRef.Of(edge.Start), PointRef.Of(edge.End) });
     }
+
+    /// <summary>Drawing width only; geometry and relations do not depend on it, so no solving is needed.</summary>
+    public void SetThickness(Edge edge, int thickness) =>
+        edge.Thickness = Math.Clamp(thickness, Edge.MinThickness, Edge.MaxThickness);
 
     public bool CanSetContinuity(Vertex vertex, Continuity continuity) => ContinuityRules.IsAllowed(vertex, continuity);
 

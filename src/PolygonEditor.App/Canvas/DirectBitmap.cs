@@ -38,6 +38,26 @@ public sealed class DirectBitmap : IDisposable
             Bits[x + y * Width] = argb;
     }
 
+    /// <summary>Per channel: old + (new − old)·coverage; the result is opaque (the canvas background is).</summary>
+    public void BlendPixel(int x, int y, int argb, double coverage)
+    {
+        if ((uint)x >= (uint)Width || (uint)y >= (uint)Height || coverage <= 0)
+            return;
+        if (coverage >= 1)
+        {
+            Bits[x + y * Width] = argb;
+            return;
+        }
+
+        int old = Bits[x + y * Width];
+        int Mix(int shift)
+        {
+            int from = (old >> shift) & 0xFF, to = (argb >> shift) & 0xFF;
+            return (int)Math.Round(from + (to - from) * coverage) << shift;
+        }
+        Bits[x + y * Width] = unchecked((int)0xFF000000) | Mix(16) | Mix(8) | Mix(0);
+    }
+
     public void Dispose()
     {
         Bitmap.Dispose();

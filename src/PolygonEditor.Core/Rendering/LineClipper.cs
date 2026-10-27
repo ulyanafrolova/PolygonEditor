@@ -46,7 +46,13 @@ public static class LineClipper
         return true;
     }
 
-    /// <summary>Clips to the render target with a small margin (line caps, rounding).</summary>
-    public static bool ClipToTarget(ref Vec2 a, ref Vec2 b, IRenderTarget target) =>
-        Clip(ref a, ref b, -2, -2, target.Width + 2, target.Height + 2);
+    /// <summary>
+    /// Clips to the render target with a small margin (line caps, rounding) plus half the line width,
+    /// so a thick line whose axis runs just outside the target still shows its visible part.
+    /// </summary>
+    public static bool ClipToTarget(ref Vec2 a, ref Vec2 b, IRenderTarget target, int thickness = 1)
+    {
+        double margin = 2 + thickness / 2.0;
+        return Clip(ref a, ref b, -margin, -margin, target.Width + margin, target.Height + margin);
+    }
 }

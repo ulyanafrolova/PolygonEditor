@@ -11,16 +11,26 @@ public sealed class BresenhamLineDrawer : ILineDrawer
 
     public BresenhamLineDrawer(IRenderTarget target) => _target = target;
 
-    public void DrawLine(Vec2 a, Vec2 b, Color color, bool dashed = false)
+    /// <summary>
+    /// Thickness by pixel replication: every pixel of the 1-px line becomes a run of
+    /// <paramref name="thickness"/> pixels across the driving axis (vertical for flat lines,
+    /// horizontal for steep ones), centered on the line.
+    /// </summary>
+    public void DrawLine(Vec2 a, Vec2 b, Color color, bool dashed = false, int thickness = 1)
     {
-        if (!LineClipper.ClipToTarget(ref a, ref b, _target))
+        if (!LineClipper.ClipToTarget(ref a, ref b, _target, thickness))
             return;
 
+        int x1 = (int)Math.Round(a.X), y1 = (int)Math.Round(a.Y), x2 = (int)Math.Round(b.X), y2 = (int)Math.Round(b.Y);
+        bool flat = Math.Abs(x2 - x1) >= Math.Abs(y2 - y1);
+        int from = -(thickness - 1) / 2, to = from + thickness - 1;
+
         int step = 0;
-        foreach (var (x, y) in Rasterize((int)Math.Round(a.X), (int)Math.Round(a.Y), (int)Math.Round(b.X), (int)Math.Round(b.Y)))
+        foreach (var (x, y) in Rasterize(x1, y1, x2, y2))
         {
             if (!dashed || step / DashLength % 2 == 0)
-                _target.SetPixel(x, y, color);
+                for (int k = from; k <= to; k++)
+                    _target.SetPixel(flat ? x : x + k, flat ? y + k : y, color);
             step++;
         }
     }

@@ -100,9 +100,12 @@ public sealed class CanvasControl : Control
         DirectBitmap bitmap = EnsureBitmap();
         using (var target = new BitmapRenderTarget(bitmap))
         {
-            ILineDrawer lines = _lineAlgorithm == LineAlgorithm.Bresenham
-                ? new BresenhamLineDrawer(target)
-                : new LibraryLineDrawer(target);
+            ILineDrawer lines = _lineAlgorithm switch
+            {
+                LineAlgorithm.Bresenham => new BresenhamLineDrawer(target),
+                LineAlgorithm.Wu => new WuLineDrawer(target),
+                _ => new LibraryLineDrawer(target),
+            };
             _renderer.Render(Controller.Editor.Scene, target, lines, Controller.Highlighted);
         }
         e.Graphics.DrawImageUnscaled(bitmap.Bitmap, 0, 0);

@@ -12,7 +12,7 @@ Dzięki temu algorytmy są testowane testami jednostkowymi (projekt `PolygonEdit
 - **Scene** – korzeń modelu: lista wielokątów i lista ograniczeń. Ograniczenia są przechowywane w scenie, a nie w krawędziach, ponieważ jedno ograniczenie może łączyć krawędzie różnych wielokątów.
 - **Polygon** – nazwa (W1, W2, …), lista wierzchołków i lista krawędzi. Krawędź i łączy wierzchołek i z wierzchołkiem (i + 1) mod n.
 - **Vertex** – pozycja, klasa ciągłości (G0 / G1 / C1) i znacznik, czy klasę ustawił użytkownik.
-- **Edge** – wierzchołek początkowy i końcowy, rodzaj (`Line`, `Bezier`, `Arc`) oraz punkty kontrolne V1, V2 (używane dla Béziera; V0 i V3 to wierzchołki krawędzi).
+- **Edge** – wierzchołek początkowy i końcowy, rodzaj (`Line`, `Bezier`, `Arc`), punkty kontrolne V1, V2 (używane dla Béziera; V0 i V3 to wierzchołki krawędzi) oraz grubość rysowania (1–10 px).
 - **ContinuityRules** – jedno źródło prawdy o ciągłości: dozwolone klasy (łuk: bez C1, G1 tylko na jednym końcu), przeliczanie wartości domyślnych (niejawnych) po zmianie rodzaju krawędzi lub topologii, normalizacja końców łuku oraz pomiar ciągłości na rzeczywistych wektorach stycznych.
 
 Metody zmieniające model (pozycje, rodzaj krawędzi, ciągłość, dodawanie ograniczeń) są `internal`: z zewnątrz biblioteki model można zmieniać tylko przez `SceneEditor`, który pilnuje reguł i uruchamia solver.
@@ -43,9 +43,28 @@ Nowy rodzaj ograniczenia wymaga tylko nowej klasy z metodami `Error` i `Project`
 ## Rysowanie (folder Rendering)
 
 - **IRenderTarget** – powierzchnia rysowania (SetPixel, linia biblioteczna, etykiety); implementuje ją warstwa App (`BitmapRenderTarget` na buforze `DirectBitmap`).
-- **ILineDrawer** – strategia rysowania odcinka: `LibraryLineDrawer` albo `BresenhamLineDrawer`.
+- **ILineDrawer** – strategia rysowania odcinka, łamanej i łuku (z grubością): `LibraryLineDrawer`, `BresenhamLineDrawer` albo `WuLineDrawer` (antyaliasing; łuki rysuje bezpośrednio algorytmem Wu dla okręgu, pozostałe strategie – jako łamane).
 - **CurveRasterizer** – zamiana krzywych na łamane.
 - **SceneRenderer** – rysuje całą scenę.
+
+## Zapis i odczyt sceny (folder Persistence)
+
+- **SceneFile** – zapis i odczyt sceny w formacie JSON. Plik zawiera wielokąty (wierzchołki z ciągłością i znacznikiem „ustawione przez użytkownika”, krawędzie z rodzajem, punktami kontrolnymi Béziera i grubością) oraz ograniczenia z numerami; krawędzie ograniczeń wskazywane są parą (numer wielokąta, numer krawędzi).
+- Łuki nie mają dodatkowych danych – ich kształt wynika z wierzchołków i ciągłości.
+- Pozycje zapisywane są dokładnie, więc wczytana scena spełnia ograniczenia bez ponownego uruchamiania solvera.
+- Przy odczycie sprawdzane są: format i wersja, liczba wierzchołków i krawędzi, poprawność odwołań ograniczeń, długości dodatnie, zakres grubości oraz dozwolone klasy ciągłości. Błąd daje `InvalidDataException`, a bieżąca scena pozostaje bez zmian.
+
+Przykład fragmentu pliku:
+
+```
+{
+  "format": "PolygonEditor.Scene",
+  "version": 1,
+  "polygons": [ { "vertices": [ { "x": 120, "y": 140, "continuity": "G0", "explicit": false }, … ],
+                  "edges": [ { "kind": "Line", "thickness": 1 }, { "kind": "Bezier", "control1": { … }, "control2": { … }, "thickness": 4 }, … ] } ],
+  "constraints": [ { "type": "Parallel", "id": 2, "edges": [ { "polygon": 0, "edge": 0 }, { "polygon": 1, "edge": 2 } ] } ]
+}
+```
 
 ## Scena początkowa
 

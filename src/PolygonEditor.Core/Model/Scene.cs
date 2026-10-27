@@ -37,6 +37,15 @@ public sealed class Scene
         return Add(new ParallelConstraint(_nextConstraintId++, a, b));
     }
 
+    /// <summary>Constraint read from a file: keeps its number, later constraints get higher ones.</summary>
+    internal T AddLoaded<T>(T constraint) where T : Constraint
+    {
+        if (_constraints.Any(c => c.Id == constraint.Id))
+            throw new ArgumentException($"Duplicate constraint id {constraint.Id}.");
+        _nextConstraintId = Math.Max(_nextConstraintId, constraint.Id + 1);
+        return Add(constraint);
+    }
+
     internal bool RemoveConstraint(Constraint constraint) => _constraints.Remove(constraint);
 
     public IEnumerable<Constraint> ConstraintsOn(Edge edge) => _constraints.Where(c => c.Involves(edge));

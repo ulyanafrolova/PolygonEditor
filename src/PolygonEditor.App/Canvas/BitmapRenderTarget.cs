@@ -28,9 +28,14 @@ public sealed class BitmapRenderTarget : IRenderTarget, IDisposable
 
     public void SetPixel(int x, int y, Color color) => _bitmap.SetPixel(x, y, color.ToArgb());
 
-    public void DrawLine(Vec2 a, Vec2 b, Color color, bool dashed)
+    public void BlendPixel(int x, int y, Color color, double coverage) => _bitmap.BlendPixel(x, y, color.ToArgb(), coverage);
+
+    /// <summary>Library thickness: pen width; round caps so the segments of a thick polyline join without notches.</summary>
+    public void DrawLine(Vec2 a, Vec2 b, Color color, bool dashed, int thickness)
     {
-        using var pen = new Pen(color, 1f) { DashStyle = dashed ? DashStyle.Dash : DashStyle.Solid };
+        using var pen = new Pen(color, thickness) { DashStyle = dashed ? DashStyle.Dash : DashStyle.Solid };
+        if (thickness > 1)
+            pen.StartCap = pen.EndCap = LineCap.Round;
         _graphics.DrawLine(pen, (float)a.X, (float)a.Y, (float)b.X, (float)b.Y);
     }
 

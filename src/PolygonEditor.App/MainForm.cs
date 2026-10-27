@@ -2,6 +2,7 @@ using PolygonEditor.App.Canvas;
 using PolygonEditor.Core.Editing;
 using PolygonEditor.Core.Geometry;
 using PolygonEditor.Core.Model;
+using PolygonEditor.Core.Persistence;
 using PolygonEditor.Core.Rendering;
 using PolygonEditor.Core.Scenes;
 
@@ -9,7 +10,8 @@ namespace PolygonEditor.App;
 
 public sealed class MainForm : Form
 {
-    private const string Hints = "LPM: przeciągnij  |  PPM: menu  |  Del: usuń wierzchołek  |  Esc: anuluj  |  F1: dokumentacja";
+    private const string Hints = "LPM: przeciągnij  |  PPM: menu  |  Del: usuń wierzchołek  |  Esc: anuluj  |  Ctrl+S / Ctrl+O: zapisz / wczytaj  |  F1: dokumentacja";
+    private const string SceneFileFilter = "Scena edytora wielokątów (*.json)|*.json|Wszystkie pliki (*.*)|*.*";
 
     private readonly SceneEditor _editor = new(InitialScene.Create());
     private readonly EditorController _controller;
@@ -102,6 +104,14 @@ public sealed class MainForm : Form
                 ShowHelp();
                 e.Handled = true;
                 break;
+            case Keys.S when e.Control:
+                SaveScene();
+                e.Handled = true;
+                break;
+            case Keys.O when e.Control:
+                LoadScene();
+                e.Handled = true;
+                break;
             case Keys.Escape:
                 bool cancelled = _controller.CancelDrag() || _controller.CancelPick();
                 if (cancelled)
@@ -131,6 +141,44 @@ public sealed class MainForm : Form
             _help.Show(this);
     }
 
+    private void SaveScene()
+    {
+        if (_controller.IsDragging)
+            return;
+        using var dialog = new SaveFileDialog { Filter = SceneFileFilter, DefaultExt = "json", FileName = "scena.json", Title = "Zapisz scenę" };
+        if (dialog.ShowDialog(this) != DialogResult.OK)
+            return;
+        try
+        {
+            SceneFile.Save(_editor.Scene, dialog.FileName);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            MessageBox.Show(this, $"Nie udało się zapisać sceny:\n{ex.Message}", "Zapis sceny", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
+
+    /// <summary>Replaces the whole scene; an invalid file leaves the current scene untouched.</summary>
+    private void LoadScene()
+    {
+        if (_controller.IsDragging)
+            return;
+        using var dialog = new OpenFileDialog { Filter = SceneFileFilter, Title = "Wczytaj scenę" };
+        if (dialog.ShowDialog(this) != DialogResult.OK)
+            return;
+        try
+        {
+            Scene scene = SceneFile.Load(dialog.FileName);
+            _controller.CancelPick();
+            _editor.LoadScene(scene);
+            OnSceneChanged();
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException)
+        {
+            MessageBox.Show(this, $"Nie udało się wczytać sceny:\n{ex.Message}", "Wczytywanie sceny", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
+
     private void OnSceneChanged()
     {
         _controller.ResetHover();
@@ -156,7 +204,7 @@ public sealed class MainForm : Form
         {
             VertexHit v => $"Wierzchołek {v.Vertex.Name} ({v.Vertex.Continuity})",
             ControlPointHit c => $"Punkt kontrolny {c.Index} krawędzi {c.Edge.Name}",
-            EdgeHit e => $"Krawędź {e.Edge.Name} ({e.Edge.Kind}, {(e.Edge.Kind == EdgeKind.Line ? "długość" : "cięciwa")} {e.Edge.Length:0.#})",
+            EdgeHit e => $"Krawędź {e.Edge.Name} ({e.Edge.Kind}, {(e.Edge.Kind == EdgeKind.Line ? "długość" : "cięciwa")} {e.Edge.Length:0.#}, grubość {e.Edge.Thickness} px)",
             PolygonHit p => $"Wielokąt {p.Target.Name}",
             _ => null,
         } ?? "";
@@ -165,7 +213,7 @@ public sealed class MainForm : Form
 
     /// <summary>
     /// One-row bar at the top: line algorithm (radio buttons, as the task requires) on the left,
-    /// documentation button on the right. A single-row TableLayoutPanel keeps every control
+    /// scene file and documentation buttons on the right. A single-row TableLayoutPanel keeps every control
     /// vertically centred and sizes the bar to its content at any display scaling.
     /// </summary>
     private TableLayoutPanel CreateToolbar()
@@ -175,20 +223,26 @@ public sealed class MainForm : Form
             Dock = DockStyle.Top,
             AutoSize = true,
             AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            ColumnCount = 5,
+            ColumnCount = 8,
             RowCount = 1,
             Padding = new Padding(6, 2, 6, 2),
         };
+        for (int i = 0; i < 4; i++)
+            bar.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        bar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100)); // free space pushes the buttons right
         for (int i = 0; i < 3; i++)
             bar.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        bar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100)); // free space pushes the button right
-        bar.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         bar.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
         var label = new Label { Text = "Rysowanie odcinków:", AutoSize = true, Anchor = AnchorStyles.Left };
         var library = new RadioButton { Text = "Biblioteczny (GDI+)", AutoSize = true, Checked = true, Anchor = AnchorStyles.Left };
         var bresenham = new RadioButton { Text = "Bresenham (własny)", AutoSize = true, Anchor = AnchorStyles.Left };
+        var wu = new RadioButton { Text = "Wu – antyaliasing (własny)", AutoSize = true, Anchor = AnchorStyles.Left };
+        var saveButton = new Button { Text = "Zapisz scenę… (Ctrl+S)", AutoSize = true, Anchor = AnchorStyles.Right };
+        var loadButton = new Button { Text = "Wczytaj scenę… (Ctrl+O)", AutoSize = true, Anchor = AnchorStyles.Right };
         var helpButton = new Button { Text = "Dokumentacja (F1)", AutoSize = true, Anchor = AnchorStyles.Right };
+        saveButton.Click += (_, _) => SaveScene();
+        loadButton.Click += (_, _) => LoadScene();
         helpButton.Click += (_, _) => ShowHelp();
 
         library.CheckedChanged += (_, _) =>
@@ -199,12 +253,19 @@ public sealed class MainForm : Form
         {
             if (bresenham.Checked) _canvas.LineAlgorithm = LineAlgorithm.Bresenham;
         };
+        wu.CheckedChanged += (_, _) =>
+        {
+            if (wu.Checked) _canvas.LineAlgorithm = LineAlgorithm.Wu;
+        };
 
         // Radio buttons with the same parent form one group: checking one unchecks the other.
         bar.Controls.Add(label, 0, 0);
         bar.Controls.Add(library, 1, 0);
         bar.Controls.Add(bresenham, 2, 0);
-        bar.Controls.Add(helpButton, 4, 0);
+        bar.Controls.Add(wu, 3, 0);
+        bar.Controls.Add(saveButton, 5, 0);
+        bar.Controls.Add(loadButton, 6, 0);
+        bar.Controls.Add(helpButton, 7, 0);
         return bar;
     }
 }

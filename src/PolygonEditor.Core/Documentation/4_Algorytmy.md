@@ -70,6 +70,31 @@ Algorytm punktu środkowego uogólniony na wszystkie oktanty, wyłącznie arytme
 
 Dla |dy| > |dx| role osi są zamienione. Linia przerywana: piksele rysowane naprzemiennie w seriach po 6.
 
+## Antyaliasing – algorytmy Wu
+
+Własna implementacja algorytmów Xiaolina Wu (`WuLineDrawer`). Piksel (x, y) to kwadrat jednostkowy o środku w (x, y). Wzdłuż osi wiodącej przetwarzana jest jedna kolumna pikseli na krok; w kolumnie idealna linia zajmuje przedział [lo, hi] drugiej osi, a każdy piksel dostaje intensywność równą długości części wspólnej z tym przedziałem. Kolor jest mieszany z tłem: nowy = (1 − I)·stary + I·kolor.
+
+### Odcinek
+
+- Oś wiodąca jak w Bresenhamie (|dx| ≥ |dy| – x, inaczej y; współrzędne są wtedy zamieniane), końce porządkowane rosnąco.
+- Gradient g = dy/dx; w kolumnie x środek linii to y = y₀ + g·(x − x₀).
+- Grubość 1: przedział [y − ½, y + ½], czyli klasyczna para pikseli ⌊y⌋ i ⌊y⌋ + 1 z intensywnościami 1 − frac(y) i frac(y).
+- Kolumny końcowe są ważone częścią piksela pokrytą przez odcinek wzdłuż osi wiodącej („xgap” z algorytmu Wu).
+- Łamana (krzywa Béziera): pokrycia wszystkich odcinków są najpierw sumowane (maks. 1), a dopiero potem mieszane z tłem. W punkcie łączenia oba odcinki pokrywają połowę piksela (xgap = ½); mieszanie po kolei dałoby 1 − ½·½ = ¾ i jaśniejsze plamki na krzywej.
+
+### Okrąg i łuk
+
+- Środek może być niecałkowity. Piksele z |dy| ≥ |dx| (względem środka) wyznaczane są kolumnami: okrąg przecina kolumnę x na wysokości |dy| = √(r² − dx²); pozostałe – symetrycznie wierszami. Każdy piksel należy do dokładnie jednej z tych części, więc nie jest mieszany dwa razy.
+- Grubość 1: przedział [|dy| − ½, |dy| + ½] – klasyczne intensywności Wu dla okręgu.
+- Łuk: rysowane są tylko piksele, których kierunek od środka leży w zakresie kątów łuku.
+- Kolumny i wiersze są ograniczone do obszaru rysowania, więc nawet łuk G1 o promieniu ~10⁶ px kosztuje tyle, ile pikseli okna.
+
+## Grubość linii
+
+- **Biblioteczny (GDI+)**: szerokość pióra, zaokrąglone końce (łamane łączą się bez szczerb).
+- **Wu (ręcznie)**: przedział w kolumnie ma długość w·√(1 + g²) zamiast 1 (w – grubość mierzona prostopadle do odcinka), więc piksele wewnętrzne są pokryte w pełni, a dwa skrajne – częściowo (wygładzone brzegi). Dla okręgu przedziałem jest pierścień [√(r_wew² − dx²), √(r_zew² − dx²)], r_wew/zew = r ∓ w/2.
+- **Bresenham (ręcznie)**: powielanie pikseli – każdy piksel linii jednopikselowej zastępowany jest serią w pikseli w poprzek osi wiodącej.
+
 ## Segment Béziera – algorytm przyrostowy
 
 Przejście do bazy potęgowej P(t) = A₃t³ + A₂t² + A₁t + A₀:

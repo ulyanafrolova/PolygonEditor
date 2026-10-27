@@ -92,8 +92,8 @@ public sealed class Polygon
         }
 
         var middle = new Vertex(this, middlePoint);
-        var first = new Edge(this, edge.Start, middle);
-        var second = new Edge(this, middle, edge.End);
+        var first = new Edge(this, edge.Start, middle) { Thickness = edge.Thickness };
+        var second = new Edge(this, middle, edge.End) { Thickness = edge.Thickness };
 
         // Topology first: making the halves Bezier consults the neighbouring edges of their ends.
         _vertices.Insert(index + 1, middle);
@@ -121,7 +121,7 @@ public sealed class Polygon
     /// <summary>
     /// Removes the vertex; its two edges are replaced by one edge. If both were Bezier segments the
     /// new one is a Bezier segment with the two outer control points (the tangents at its ends stay),
-    /// if both were arcs it is an arc, otherwise a straight edge.
+    /// if both were arcs it is an arc, otherwise a straight edge. It keeps the larger thickness.
     /// Returns the removed edges so the scene can drop their constraints.
     /// </summary>
     internal IReadOnlyList<Edge> RemoveVertex(Vertex vertex)
@@ -136,7 +136,7 @@ public sealed class Polygon
         Edge before = _edges[beforeIndex];
         Edge after = _edges[index];
 
-        var merged = new Edge(this, before.Start, after.End);
+        var merged = new Edge(this, before.Start, after.End) { Thickness = Math.Max(before.Thickness, after.Thickness) };
         _edges[beforeIndex] = merged;
         _edges.RemoveAt(index);
         _vertices.RemoveAt(index);

@@ -19,7 +19,7 @@ public static class Palette
     public static readonly Color Highlight = Color.FromArgb(0, 170, 90);
 }
 
-/// <summary>Draws the whole scene: edges (lines, Bezier curves, arcs), vertices, continuity and constraint icons.</summary>
+/// <summary>Draws the whole scene: edges (lines, Bezier curves, arcs; each with its own thickness), vertices, continuity and constraint icons.</summary>
 public sealed class SceneRenderer
 {
     private const double VertexRadius = 5;
@@ -62,7 +62,10 @@ public sealed class SceneRenderer
         }
 
         Color color = highlighted ? Palette.Highlight : edge.Kind == EdgeKind.Line ? Palette.Edge : Palette.Curve;
-        lines.DrawPolyline(CurveRasterizer.EdgePoints(edge), color);
+        if (edge.Kind == EdgeKind.Arc && ArcGeometry.Compute(edge) is { } arc)
+            lines.DrawArc(arc, color, edge.Thickness); // the Wu drawer rasterizes the circle directly
+        else
+            lines.DrawPolyline(CurveRasterizer.EdgePoints(edge), color, thickness: edge.Thickness);
     }
 
     private static void DrawHandleHighlight(HitTarget? highlight, IRenderTarget target)

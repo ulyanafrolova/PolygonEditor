@@ -81,6 +81,108 @@ public class RasterizationTests
     }
 
     [Fact]
+    public void Wu_ThinLineGivesClassicPairOfIntensities()
+    {
+        // y = 0.3·x: in column x the center is 0.3x, so pixels floor and floor + 1 get 1 − frac and frac.
+        var pixels = WuLineDrawer.RasterizeLine(new Vec2(0, 0), new Vec2(10, 3)).ToList();
+
+        foreach (int x in Enumerable.Range(1, 9))
+        {
+            double center = 0.3 * x, frac = center - Math.Floor(center);
+            var column = pixels.Where(p => p.X == x).ToDictionary(p => p.Y, p => p.Coverage);
+            Assert.Equal(1 - frac, column[(int)Math.Floor(center)], 6);
+            if (frac > 1e-9)
+                Assert.Equal(frac, column[(int)Math.Floor(center) + 1], 6);
+            Assert.Equal(1, column.Values.Sum(), 6);
+        }
+        // End columns are weighted by xgap: the segment covers half of pixel 0 and half of pixel 10.
+        Assert.Equal(0.5, pixels.Where(p => p.X == 0).Sum(p => p.Coverage), 6);
+        Assert.Equal(0.5, pixels.Where(p => p.X == 10).Sum(p => p.Coverage), 6);
+    }
+
+    [Theory]
+    [InlineData(0, 0, 40, 10, 5)]
+    [InlineData(0, 0, 10, 40, 4)]   // steep: rows instead of columns
+    [InlineData(30, 30, 0, 0, 6)]   // 45°, reversed
+    public void Wu_ThickLineCoversWidthTimesLength(double ax, double ay, double bx, double by, int thickness)
+    {
+        Vec2 a = new(ax, ay), b = new(bx, by);
+
+        var pixels = WuLineDrawer.RasterizeLine(a, b, thickness).ToList();
+
+        // Total coverage = area of the band ≈ length · width (ends are cut across the driving axis).
+        Assert.Equal(Vec2.Distance(a, b) * thickness, pixels.Sum(p => p.Coverage), 0);
+        Assert.All(pixels, p => Assert.InRange(p.Coverage, 0, 1));
+        Assert.Equal(pixels.Count, pixels.Select(p => (p.X, p.Y)).Distinct().Count());
+    }
+
+    [Theory]
+    [InlineData(40.0, 1)]
+    [InlineData(40.3, 1)]
+    [InlineData(25.0, 6)]
+    public void Wu_ArcStaysOnRingWithinSweepAndCoversItsArea(double radius, int thickness)
+    {
+        var arc = new ArcShape(new Vec2(60.4, 50.7), radius, 0.3, Math.PI); // half circle, non-integer center
+
+        var pixels = WuLineDrawer.RasterizeArc(arc, thickness, 0, 0, 200, 200).ToList();
+
+        Assert.Equal(pixels.Count, pixels.Select(p => (p.X, p.Y)).Distinct().Count()); // nothing blended twice
+        Assert.All(pixels, p =>
+        {
+            Vec2 offset = new Vec2(p.X, p.Y) - arc.Center;
+            Assert.True(Math.Abs(offset.Length - radius) <= thickness / 2.0 + 1, $"({p.X}, {p.Y}) off the ring");
+            double angle = Vec2.Angle(offset) - arc.StartAngle;
+            angle = (angle % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
+            Assert.True(angle <= arc.Sweep + 1e-9, $"({p.X}, {p.Y}) outside the sweep");
+        });
+        // Thick: area of the half ring. Thin (classic Wu): intensities sum to 1 per column/row step,
+        // and a half circle spans 4 · r/√2 steps.
+        double area = thickness == 1 ? 2 * Math.Sqrt(2) * radius : Math.PI * radius * thickness;
+        Assert.InRange(pixels.Sum(p => p.Coverage), area * 0.93, area * 1.07);
+    }
+
+    [Fact]
+    public void Wu_HugeArcIsClippedToTheTarget()
+    {
+        var arc = ArcGeometry.TangentArc(new Vec2(0, 50), new Vec2(1, 1e-6), new Vec2(100, 50))!.Value; // radius ~ 10⁸
+
+        var pixels = WuLineDrawer.RasterizeArc(arc, 3, 0, 0, 99, 99).ToList();
+
+        Assert.All(pixels, p => Assert.True(p.X is >= 0 and <= 99 && p.Y is >= 0 and <= 99));
+        Assert.InRange(pixels.Sum(p => p.Coverage), 3 * 100 * 0.9, 3 * 100 * 1.1);
+    }
+
+    [Fact]
+    public void Bresenham_ThicknessReplicatesPixelsAcrossTheDrivingAxis()
+    {
+        var target = new RecordingTarget(100, 100);
+        var drawer = new BresenhamLineDrawer(target);
+
+        drawer.DrawLine(new Vec2(10, 50), new Vec2(60, 60), System.Drawing.Color.Black, thickness: 3);
+
+        Assert.Equal(51 * 3, target.Pixels.Count);
+        Assert.Contains((10, 49), target.Pixels);
+        Assert.Contains((10, 51), target.Pixels);
+    }
+
+    private sealed class RecordingTarget : IRenderTarget
+    {
+        public RecordingTarget(int width, int height) => (Width, Height) = (width, height);
+
+        public HashSet<(int, int)> Pixels { get; } = new();
+        public int Width { get; }
+        public int Height { get; }
+
+        public void Clear(System.Drawing.Color color) => Pixels.Clear();
+        public void SetPixel(int x, int y, System.Drawing.Color color) => Pixels.Add((x, y));
+        public void BlendPixel(int x, int y, System.Drawing.Color color, double coverage) => Pixels.Add((x, y));
+        public void DrawLine(Vec2 a, Vec2 b, System.Drawing.Color color, bool dashed, int thickness) { }
+        public void FillCircle(Vec2 center, double radius, System.Drawing.Color color) { }
+        public void DrawCircle(Vec2 center, double radius, System.Drawing.Color color) { }
+        public void DrawLabel(string text, Vec2 center, System.Drawing.Color foreground, System.Drawing.Color background) { }
+    }
+
+    [Fact]
     public void Arc_PointsStayOnCircleAndEndAtEndpoint()
     {
         var arc = ArcGeometry.TangentArc(new Vec2(0, 0), new Vec2(1, 1), new Vec2(100, 0))!.Value;

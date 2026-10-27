@@ -1,6 +1,6 @@
 # Instrukcja obsługi
 
-Po uruchomieniu programu wyświetla się scena demonstracyjna z trzema wielokątami (plik `Scenes/InitialScene.cs`). Zgodnie z zadaniem wielokąty nie są tworzone ani usuwane przez użytkownika – pochodzą ze sceny początkowej.
+Po uruchomieniu programu wyświetla się scena demonstracyjna z trzema wielokątami (plik `Scenes/InitialScene.cs`). Zgodnie z zadaniem wielokąty nie są tworzone ani usuwane przez użytkownika – pochodzą ze sceny początkowej albo z wczytanego pliku sceny.
 
 ## Mysz
 
@@ -20,6 +20,7 @@ Na krawędzi (albo na jej punkcie kontrolnym):
 
 - **Dodaj wierzchołek w środku**.
 - **Odcinek / Krzywa Béziera / Łuk okręgu** – rodzaj krawędzi.
+- **Grubość → 1–10 px** – grubość rysowania tej krawędzi (odcinka, krzywej lub łuku). Nie wpływa na geometrię ani ograniczenia; nowe krawędzie powstałe przy dodawaniu wierzchołka dziedziczą grubość.
 - **Ustal długość…** – okno z długością (domyślnie bieżąca). Jeśli ograniczenie już istnieje, pozycja nazywa się „Zmień długość” i zmienia jego wartość. Na krawędzi zakrzywionej pozycja i okno mówią o długości cięciwy.
 - **Równoległa do…** – po wybraniu należy kliknąć LPM drugą krawędź (może należeć do innego wielokąta). Esc anuluje wybór.
 - **Usuń ograniczenie** – lista ograniczeń tej krawędzi.
@@ -29,12 +30,15 @@ Jeżeli zmiany nie da się pogodzić z istniejącymi ograniczeniami, jest ona co
 ## Klawiatura
 
 - **F1** – ta dokumentacja.
+- **Ctrl+S** – zapis sceny do pliku, **Ctrl+O** – wczytanie sceny z pliku.
 - **Delete** – usunięcie wierzchołka pod kursorem.
 - **Esc** – anulowanie przeciągania (przywraca stan sprzed chwycenia elementu) albo wyboru drugiej krawędzi.
 
 ## Pasek narzędzi (u góry okna)
 
-- **Rysowanie odcinków** – przyciski radiowe, wybór algorytmu: biblioteczny (GDI+, z wygładzaniem) albo własna implementacja algorytmu Bresenhama. Wybór dotyczy wszystkich linii: krawędzi, krzywych (rysowanych jako łamane) i wieloboków Béziera.
+- **Rysowanie odcinków** – przyciski radiowe, wybór algorytmu: biblioteczny (GDI+, z wygładzaniem), własna implementacja algorytmu Bresenhama albo własna implementacja algorytmów Wu z antyaliasingiem (odcinki i łuki okręgów). Wybór dotyczy wszystkich linii: krawędzi, krzywych Béziera (rysowanych jako łamane), łuków i wieloboków Béziera.
+- Grubość krawędzi: w trybie bibliotecznym realizuje ją GDI+ (szerokość pióra), w trybach własnych – ręcznie (Bresenham: powielanie pikseli, Wu: pasmo z antyaliasingiem).
+- **Zapisz scenę… / Wczytaj scenę…** – zapis i odczyt całej sceny (wielokąty, rodzaje krawędzi, punkty kontrolne, ciągłość, ograniczenia, grubości) w pliku JSON. Niepoprawny plik nie zmienia bieżącej sceny – pojawia się komunikat.
 - **Dokumentacja (F1)** – przycisk po prawej stronie paska.
 
 Gdy okno jest mniejsze niż scena, pojawiają się paski przewijania.

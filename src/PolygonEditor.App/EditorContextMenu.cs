@@ -80,6 +80,16 @@ public sealed class EditorContextMenu
             item.Checked = edge.Kind == kind;
             _menu.Items.Add(item);
         }
+
+        var thickness = new ToolStripMenuItem($"Grubość ({edge.Thickness} px)");
+        for (int width = Edge.MinThickness; width <= Edge.MaxThickness; width++)
+        {
+            int chosen = width;
+            var item = Item($"{width} px", () => _editor.SetThickness(edge, chosen));
+            item.Checked = edge.Thickness == width;
+            thickness.DropDownItems.Add(item);
+        }
+        _menu.Items.Add(thickness);
         _menu.Items.Add(new ToolStripSeparator());
 
         var fixedLength = _editor.FixedLengthOn(edge);
