@@ -34,12 +34,15 @@ Jeżeli zmiany nie da się pogodzić z istniejącymi ograniczeniami, jest ona co
 - **Delete** – usunięcie wierzchołka pod kursorem.
 - **Esc** – anulowanie przeciągania (przywraca stan sprzed chwycenia elementu) albo wyboru drugiej krawędzi.
 
-## Pasek narzędzi (u góry okna)
+## Menu (u góry okna)
 
-- **Rysowanie odcinków** – przyciski radiowe, wybór algorytmu: biblioteczny (GDI+, z wygładzaniem), własna implementacja algorytmu Bresenhama albo własna implementacja algorytmów Wu z antyaliasingiem (odcinki i łuki okręgów). Wybór dotyczy wszystkich linii: krawędzi, krzywych Béziera (rysowanych jako łamane), łuków i wieloboków Béziera.
+- **Plik → Zapisz scenę… (Ctrl+S) / Wczytaj scenę… (Ctrl+O)** – zapis i odczyt całej sceny (wielokąty, rodzaje krawędzi, punkty kontrolne, ciągłość, ograniczenia, grubości) w pliku JSON. Niepoprawny plik nie zmienia bieżącej sceny – pojawia się komunikat.
+- **Pomoc → Dokumentacja (F1)**.
+
+## Pasek narzędzi (pod menu)
+
+- **Rysowanie odcinków** – przyciski radiowe, wybór algorytmu: biblioteczny (GDI+, z wygładzaniem), własna implementacja algorytmu Bresenhama albo własna implementacja algorytmów Wu z antyaliasingiem (odcinki i łuki okręgów). Wybór dotyczy wszystkich linii: krawędzi, krzywych Béziera (rysowanych jako łamane), łuków i wieloboków Béziera. W wąskim oknie przyciski przechodzą do drugiego wiersza.
 - Grubość krawędzi: w trybie bibliotecznym realizuje ją GDI+ (szerokość pióra), w trybach własnych – ręcznie (Bresenham: powielanie pikseli, Wu: pasmo z antyaliasingiem).
-- **Zapisz scenę… / Wczytaj scenę…** – zapis i odczyt całej sceny (wielokąty, rodzaje krawędzi, punkty kontrolne, ciągłość, ograniczenia, grubości) w pliku JSON. Niepoprawny plik nie zmienia bieżącej sceny – pojawia się komunikat.
-- **Dokumentacja (F1)** – przycisk po prawej stronie paska.
 
 Gdy okno jest mniejsze niż scena, pojawiają się paski przewijania.
 

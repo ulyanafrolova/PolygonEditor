@@ -61,7 +61,9 @@ public sealed class MainForm : Form
         var statusStrip = new StatusStrip();
         statusStrip.Items.Add(_status);
 
+        // Docking goes from the last added control: menu at the very top, the toolbar under it.
         Controls.Add(CreateToolbar());
+        Controls.Add(CreateMenu());
         Controls.Add(statusStrip);
         Controls.Add(_viewport);
         _viewport.BringToFront(); // fill the space left by the toolbar and status bar
@@ -102,14 +104,6 @@ public sealed class MainForm : Form
         {
             case Keys.F1:
                 ShowHelp();
-                e.Handled = true;
-                break;
-            case Keys.S when e.Control:
-                SaveScene();
-                e.Handled = true;
-                break;
-            case Keys.O when e.Control:
-                LoadScene();
                 e.Handled = true;
                 break;
             case Keys.Escape:
@@ -212,38 +206,46 @@ public sealed class MainForm : Form
     }
 
     /// <summary>
-    /// One-row bar at the top: line algorithm (radio buttons, as the task requires) on the left,
-    /// scene file and documentation buttons on the right. A single-row TableLayoutPanel keeps every control
-    /// vertically centred and sizes the bar to its content at any display scaling.
+    /// Menu bar: scene file operations and documentation. Ctrl+S / Ctrl+O are the items' shortcut keys.
     /// </summary>
-    private TableLayoutPanel CreateToolbar()
+    private MenuStrip CreateMenu()
     {
-        var bar = new TableLayoutPanel
+        var file = new ToolStripMenuItem("Plik");
+        var save = new ToolStripMenuItem("Zapisz scenę…", null, (_, _) => SaveScene()) { ShortcutKeys = Keys.Control | Keys.S };
+        var load = new ToolStripMenuItem("Wczytaj scenę…", null, (_, _) => LoadScene()) { ShortcutKeys = Keys.Control | Keys.O };
+        file.DropDownItems.AddRange(new ToolStripItem[] { save, load });
+
+        var help = new ToolStripMenuItem("Pomoc");
+        // F1 itself is handled in OnKeyDown; the menu only shows it.
+        help.DropDownItems.Add(new ToolStripMenuItem("Dokumentacja", null, (_, _) => ShowHelp()) { ShortcutKeyDisplayString = "F1" });
+
+        var menu = new MenuStrip { Dock = DockStyle.Top };
+        menu.Items.AddRange(new ToolStripItem[] { file, help });
+        MainMenuStrip = menu;
+        return menu;
+    }
+
+    /// <summary>
+    /// Bar under the menu with the line algorithm (radio buttons, as the task requires). A wrapping
+    /// FlowLayoutPanel moves controls to the next row when the window is too narrow (or the display
+    /// scaling too large) instead of drawing them over each other; it sizes itself to its content.
+    /// </summary>
+    private FlowLayoutPanel CreateToolbar()
+    {
+        var bar = new FlowLayoutPanel
         {
             Dock = DockStyle.Top,
             AutoSize = true,
             AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            ColumnCount = 8,
-            RowCount = 1,
+            WrapContents = true,
             Padding = new Padding(6, 2, 6, 2),
         };
-        for (int i = 0; i < 4; i++)
-            bar.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        bar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100)); // free space pushes the buttons right
-        for (int i = 0; i < 3; i++)
-            bar.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        bar.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
+        // Anchor without Top/Bottom centres each control vertically in its row.
         var label = new Label { Text = "Rysowanie odcinków:", AutoSize = true, Anchor = AnchorStyles.Left };
         var library = new RadioButton { Text = "Biblioteczny (GDI+)", AutoSize = true, Checked = true, Anchor = AnchorStyles.Left };
         var bresenham = new RadioButton { Text = "Bresenham (własny)", AutoSize = true, Anchor = AnchorStyles.Left };
         var wu = new RadioButton { Text = "Wu – antyaliasing (własny)", AutoSize = true, Anchor = AnchorStyles.Left };
-        var saveButton = new Button { Text = "Zapisz scenę… (Ctrl+S)", AutoSize = true, Anchor = AnchorStyles.Right };
-        var loadButton = new Button { Text = "Wczytaj scenę… (Ctrl+O)", AutoSize = true, Anchor = AnchorStyles.Right };
-        var helpButton = new Button { Text = "Dokumentacja (F1)", AutoSize = true, Anchor = AnchorStyles.Right };
-        saveButton.Click += (_, _) => SaveScene();
-        loadButton.Click += (_, _) => LoadScene();
-        helpButton.Click += (_, _) => ShowHelp();
 
         library.CheckedChanged += (_, _) =>
         {
@@ -258,14 +260,8 @@ public sealed class MainForm : Form
             if (wu.Checked) _canvas.LineAlgorithm = LineAlgorithm.Wu;
         };
 
-        // Radio buttons with the same parent form one group: checking one unchecks the other.
-        bar.Controls.Add(label, 0, 0);
-        bar.Controls.Add(library, 1, 0);
-        bar.Controls.Add(bresenham, 2, 0);
-        bar.Controls.Add(wu, 3, 0);
-        bar.Controls.Add(saveButton, 5, 0);
-        bar.Controls.Add(loadButton, 6, 0);
-        bar.Controls.Add(helpButton, 7, 0);
+        // Radio buttons with the same parent form one group: checking one unchecks the others.
+        bar.Controls.AddRange(new Control[] { label, library, bresenham, wu });
         return bar;
     }
 }
